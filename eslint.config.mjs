@@ -7,12 +7,32 @@ const eslintConfig = defineConfig([
   ...nextTs,
   // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    files: ["**/*.{ts,tsx}"],
+    rules: {
+      "react/forbid-dom-props": ["error", { forbid: ["style"] }],
+      "@typescript-eslint/consistent-type-imports": "error",
+    },
+  },
+  {
+    files: ["**/*.{ts,tsx}"],
+    ignores: ["lib/db/**", "scripts/**", "app/api/uploads/**", "**/*.test.ts"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        paths: [
+          { name: "fs", message: "Filesystem access only allowed in lib/db/* — use the data layer." },
+          { name: "fs/promises", message: "Filesystem access only allowed in lib/db/* — use the data layer." },
+          { name: "node:fs", message: "Filesystem access only allowed in lib/db/* — use the data layer." },
+          { name: "node:fs/promises", message: "Filesystem access only allowed in lib/db/* — use the data layer." },
+        ],
+      }],
+    },
+  },
 ]);
 
 export default eslintConfig;
