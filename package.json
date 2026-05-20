@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "lint:css": "stylelint '**/*.{css,module.css}'"
+    "lint:css": "stylelint '**/*.{css,module.css}'",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@types/bcrypt": "^6.0.0",
