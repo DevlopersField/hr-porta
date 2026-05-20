@@ -1,0 +1,15 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "plugins": ["stylelint-declaration-strict-value"],
+  "rules": {
+    "at-rule-no-unknown": [true, {
+      "ignoreAtRules": ["theme", "source", "utility", "variant", "custom-variant", "plugin", "config", "tailwind"]
+    }],
+    "import-notation": "string",
+    "color-hex-length": null,
+    "declaration-property-unit-disallowed-list": {
+      "/^(width|height|min-width|min-height|max-width|max-height|padding|padding-top|padding-right|padding-bottom|padding-left|margin|margin-top|margin-right|margin-bottom|margin-left|top|right|bottom|left|gap|row-gap|column-gap|font-size|line-height|border-radius|border-width)$/": ["em", "rem"]
+    },
+    "unit-allowed-list": ["px", "deg", "ms", "s", "fr", "vh", "vw", "%"]
+  }
+}
