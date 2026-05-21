@@ -36,3 +36,17 @@ describe('readJson', () => {
     await expect(readJson('wrong.json', Schema)).rejects.toThrow();
   });
 });
+
+describe('updateJson concurrency', () => {
+  it('serializes 50 concurrent increments to the same file', async () => {
+    const { updateJson } = await import('./core');
+    const Schema = z.object({ count: z.number() });
+    const ops = Array.from({ length: 50 }, () =>
+      updateJson('counter.json', Schema, { count: 0 }, (c) => ({ count: c.count + 1 }))
+    );
+    await Promise.all(ops);
+    const { readJson } = await import('./core');
+    const final = await readJson('counter.json', Schema);
+    expect(final.count).toBe(50);
+  }, 30000);
+});
