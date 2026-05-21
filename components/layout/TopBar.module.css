@@ -1,0 +1,43 @@
+/* components/layout/TopBar.module.css */
+.topbar {
+  height: var(--topbar-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+}
+.searchWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  width: 360px;
+  max-width: 50vw;
+}
+.search {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 14px;
+  width: 100%;
+  color: var(--color-text);
+}
+.actions { display: flex; align-items: center; gap: 16px; }
+.iconBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: 6px;
+  border-radius: var(--radius-sm);
+}
+.iconBtn:hover { background: var(--color-surface); color: var(--color-text); }
+.userBadge {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+}
