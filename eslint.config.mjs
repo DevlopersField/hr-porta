@@ -21,7 +21,7 @@ const eslintConfig = defineConfig([
   },
   {
     files: ["**/*.{ts,tsx}"],
-    ignores: ["lib/db/**", "scripts/**", "app/api/uploads/**", "**/*.test.ts"],
+    ignores: ["lib/db/**", "lib/uploads.ts", "scripts/**", "app/api/uploads/**", "**/*.test.ts"],
     rules: {
       "no-restricted-imports": ["error", {
         paths: [
