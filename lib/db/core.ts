@@ -13,7 +13,7 @@ function getDataDir(): string {
 }
 
 const LOCK_OPTIONS = {
-  retries: { retries: 10, minTimeout: 50, maxTimeout: 250, factor: 1.5 },
+  retries: { retries: 100, minTimeout: 20, maxTimeout: 250, factor: 1.5, randomize: true },
   stale: Number(process.env.LOCK_STALE_MS ?? 10000),
   update: Number(process.env.LOCK_HEARTBEAT_MS ?? 5000),
 };
@@ -64,8 +64,7 @@ export async function withLock<T>(
 ): Promise<T> {
   const full = resolve(relPath);
   await fs.mkdir(path.dirname(full), { recursive: true });
-  try { await fs.access(full); } catch { await atomicWrite(full, '{}'); }
-  const release = await lockfile.lock(full, LOCK_OPTIONS);
+  const release = await lockfile.lock(full, { ...LOCK_OPTIONS, realpath: false });
   try { return await mutator(); }
   finally { await release(); }
 }
@@ -97,8 +96,7 @@ export async function withLocks<T>(
     for (const p of sorted) {
       const full = resolve(p);
       await fs.mkdir(path.dirname(full), { recursive: true });
-      try { await fs.access(full); } catch { await atomicWrite(full, '{}'); }
-      releases.push(await lockfile.lock(full, LOCK_OPTIONS));
+      releases.push(await lockfile.lock(full, { ...LOCK_OPTIONS, realpath: false }));
     }
     return await mutator();
   } finally {
