@@ -1,0 +1,17 @@
+/* components/ui/Input.module.css */
+.wrap { display: flex; flex-direction: column; gap: 6px; }
+.label { font-size: 13px; font-weight: 500; color: var(--color-text); }
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: var(--color-text);
+  outline: none;
+  transition: border-color 120ms, box-shadow 120ms;
+}
+.input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); }
+.errorBorder { border-color: #DC2626; }
+.error { font-size: 12px; color: #DC2626; }
