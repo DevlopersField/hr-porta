@@ -17,8 +17,8 @@ export default async function PortalLayout({ children }: { children: React.React
   return (
     <div
       className="grid min-h-screen"
+      // eslint-disable-next-line react/forbid-dom-props
       style={
-        // eslint-disable-next-line react/forbid-dom-props
         {
           gridTemplateColumns: 'var(--sidebar-width) 1fr',
           padding: '16px',
@@ -29,8 +29,8 @@ export default async function PortalLayout({ children }: { children: React.React
       <Sidebar user={session.user as any} settings={settings} />
       <div
         className="grid"
+        // eslint-disable-next-line react/forbid-dom-props
         style={
-          // eslint-disable-next-line react/forbid-dom-props
           {
             gridTemplateRows: 'var(--topbar-height) 1fr',
             gap: '16px',
