@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // lib/auth.ts
 
 // ============= IMPORTS =============
@@ -12,18 +11,7 @@ import {
   hasPermission,
   type Permission,
 } from '@/lib/permissions';
-
-// ============= TYPES =============
-declare module 'next-auth' {
-  interface Session {
-    user: {
-      id: string;
-      email: string;
-      name: string;
-      permissions: string[];
-    };
-  }
-}
+import { authConfig } from '../auth.config';
 
 // ============= INPUT VALIDATION =============
 const CredentialsSchema = z.object({
@@ -31,12 +19,9 @@ const CredentialsSchema = z.object({
   password: z.string().min(1).max(200),
 });
 
-// ============= NEXTAUTH CONFIG =============
+// ============= NEXTAUTH (Node-only — includes DB-using authorize) =============
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  session: {
-    strategy: 'jwt',
-    maxAge: Number(process.env.SESSION_MAX_AGE ?? 28800),
-  },
+  ...authConfig,
   providers: [
     Credentials({
       credentials: { email: {}, password: {} },
@@ -57,21 +42,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = (user as any).id;
-        token.permissions = (user as any).permissions;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      session.user.id = token.id as string;
-      session.user.permissions = (token.permissions ?? []) as string[];
-      return session;
-    },
-  },
-  pages: { signIn: '/login' },
 });
 
 // ============= REQUIRE SESSION HELPER =============
