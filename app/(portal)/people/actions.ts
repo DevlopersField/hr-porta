@@ -53,7 +53,7 @@ export async function createUserAction(formData: FormData): Promise<void> {
     mustChangePassword: true,
   });
   await rebuildPeopleSearchIndex();
-  await auditLog({ actorId: actor.id, action: 'user.create', target: created.id, details: { email: input.email, tempPassword } });
+  await auditLog({ actorId: actor.id, action: 'user.create', target: created.id, details: { email: input.email } });
   revalidatePath('/people');
   redirect(`/people/${created.id}?newPassword=${encodeURIComponent(tempPassword)}`);
 }
