@@ -66,7 +66,7 @@ export default async function PeoplePage({
 
       <GlassPanel className="p-0 overflow-hidden">
         {/* eslint-disable-next-line react/forbid-dom-props */}
-        <table style={{ width: '100%', borderCollapse: 'collapse' } as React.CSSProperties}>
+        <table className="responsive-card" style={{ width: '100%', borderCollapse: 'collapse' } as React.CSSProperties}>
           <thead>
             {/* eslint-disable-next-line react/forbid-dom-props */}
             <tr style={{ background: 'var(--color-surface)' } as React.CSSProperties}>
@@ -87,20 +87,20 @@ export default async function PeoplePage({
               // eslint-disable-next-line react/forbid-dom-props
               <tr key={p.id} style={{ borderTop: '1px solid var(--color-border)' } as React.CSSProperties}>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ padding: '12px 16px' } as React.CSSProperties}>
+                <td data-label="Name" style={{ padding: '12px 16px' } as React.CSSProperties}>
                   {/* eslint-disable-next-line react/forbid-dom-props */}
                   <Link href={`/people/${p.id}`} style={{ color: 'var(--color-primary)', fontWeight: 500 } as React.CSSProperties}>
                     {p.displayName}
                   </Link>
                 </td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--color-text-muted)' } as React.CSSProperties}>{p.email}</td>
+                <td data-label="Email" style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--color-text-muted)' } as React.CSSProperties}>{p.email}</td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{p.department || '—'}</td>
+                <td data-label="Department" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{p.department || '—'}</td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{p.jobTitle || '—'}</td>
+                <td data-label="Title" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{p.jobTitle || '—'}</td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{p.active ? 'Active' : 'Inactive'}</td>
+                <td data-label="Status" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{p.active ? 'Active' : 'Inactive'}</td>
               </tr>
             ))}
           </tbody>
