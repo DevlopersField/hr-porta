@@ -33,7 +33,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const dataTheme = resolved ?? undefined;
 
   return (
-    <html lang="en" {...(dataTheme ? { 'data-theme': dataTheme } : {})}>
+    // suppressHydrationWarning: required because the inline system-mode script
+    // in ThemeInjector mutates <html data-theme> before React hydrates, which
+    // would otherwise trip a hydration mismatch warning.
+    <html lang="en" suppressHydrationWarning {...(dataTheme ? { 'data-theme': dataTheme } : {})}>
       <head>
         <ThemeInjector settings={settings} intent={intent} />
       </head>
