@@ -7,12 +7,11 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 // ============= CONFIG =============
-const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'] as const;
+const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp'] as const;
 const EXT_BY_MIME: Record<string, string> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
-  'image/svg+xml': 'svg',
 };
 const MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
 

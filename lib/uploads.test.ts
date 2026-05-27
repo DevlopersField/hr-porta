@@ -14,6 +14,13 @@ describe('saveUploadedImage', () => {
     await expect(saveUploadedImage(file, 'logo')).rejects.toThrow(/Invalid MIME type/);
   });
 
+  it('rejects image/svg+xml (SVG can carry script payloads)', async () => {
+    const { saveUploadedImage } = await import('./uploads');
+    const svgBody = '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>';
+    const file = new File([new TextEncoder().encode(svgBody)], 'x.svg', { type: 'image/svg+xml' });
+    await expect(saveUploadedImage(file, 'logo')).rejects.toThrow(/Invalid MIME type: image\/svg\+xml/);
+  });
+
   it('rejects when file > 2MB', async () => {
     const { saveUploadedImage } = await import('./uploads');
     const big = new Uint8Array(Math.floor(2.1 * 1024 * 1024));
