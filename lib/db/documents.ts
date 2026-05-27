@@ -5,6 +5,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import matter from 'gray-matter';
 import { marked } from 'marked';
+import DOMPurify from 'isomorphic-dompurify';
 
 // ============= TYPES =============
 export type DocMetadata = {
@@ -54,7 +55,8 @@ export async function getDocument(slug: string): Promise<DocFull | null> {
   try { raw = await fs.readFile(file, 'utf8'); }
   catch { return null; }
   const { data, content } = matter(raw);
-  const html = await marked.parse(content);
+  const rawHtml = await marked.parse(content);
+  const html = DOMPurify.sanitize(rawHtml) as string;
   return {
     slug,
     title: String(data.title ?? slug),

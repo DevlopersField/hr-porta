@@ -1,5 +1,7 @@
 // lib/db/documents.test.ts
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
 describe('getDocument slug validation', () => {
   it("returns null for '../../../etc/passwd' (slug regex rejects)", async () => {
@@ -52,5 +54,56 @@ describe('getDocument positive path (uses real seeded docs)', () => {
     expect(typeof doc?.html).toBe('string');
     expect(typeof doc?.raw).toBe('string');
     expect(doc!.html.length).toBeGreaterThan(0);
+  });
+});
+
+describe('getDocument HTML sanitization', () => {
+  const fixtureSlug = 'test-xss-fixture';
+  const fixturePath = path.join(process.cwd(), 'content', 'document-center', `${fixtureSlug}.md`);
+
+  beforeEach(async () => {
+    const body = [
+      '---',
+      'title: XSS Fixture',
+      'category: Test',
+      'updatedAt: 2025-01-01',
+      '---',
+      '',
+      '# Hello',
+      '',
+      '<script>alert(1)</script>',
+      '',
+      '<img src="x" onerror="alert(2)" />',
+      '',
+      'Some safe **bold** text.',
+      '',
+    ].join('\n');
+    await fs.writeFile(fixturePath, body, 'utf8');
+  });
+
+  afterEach(async () => {
+    await fs.unlink(fixturePath).catch(() => {});
+  });
+
+  it('strips <script> tags from rendered HTML', async () => {
+    const { getDocument } = await import('./documents');
+    const doc = await getDocument(fixtureSlug);
+    expect(doc).not.toBeNull();
+    expect(doc!.html).not.toContain('<script>');
+    expect(doc!.html).not.toContain('alert(1)');
+  });
+
+  it('strips event handler attributes like onerror', async () => {
+    const { getDocument } = await import('./documents');
+    const doc = await getDocument(fixtureSlug);
+    expect(doc).not.toBeNull();
+    expect(doc!.html).not.toContain('onerror');
+  });
+
+  it('preserves safe markdown rendering (bold)', async () => {
+    const { getDocument } = await import('./documents');
+    const doc = await getDocument(fixtureSlug);
+    expect(doc).not.toBeNull();
+    expect(doc!.html).toContain('<strong>bold</strong>');
   });
 });
