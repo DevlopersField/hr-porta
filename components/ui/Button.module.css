@@ -7,7 +7,7 @@
   justify-content: center;
   gap: 8px;
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   cursor: pointer;
   font-weight: 500;
   transition: transform 120ms, background 120ms, box-shadow 120ms;
@@ -19,8 +19,8 @@
 /* ============= VARIANTS ============= */
 .primary {
   background: var(--color-primary);
-  color: white;
-  box-shadow: 0 4px 12px 0 rgba(79, 70, 229, 0.25);
+  color: var(--color-primary-fill-text);
+  box-shadow: 0 4px 12px rgba(31, 77, 47, 0.25);
 }
 .primary:hover:not(:disabled) { background: var(--color-primary-hover); }
 
