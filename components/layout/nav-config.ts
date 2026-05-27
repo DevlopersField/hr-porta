@@ -45,6 +45,8 @@ export const NAV: NavItem[] = [
     children: [
       { id: 'balance', label: 'Balance', href: '/leave/balance', iconName: 'PieChart' },
       { id: 'request', label: 'Request Time Off', href: '/leave/request', iconName: 'CalendarPlus' },
+      { id: 'approvals', label: 'Approvals', href: '/leave/approvals', iconName: 'CheckCircle',
+        requires: PERMISSIONS.APPROVE_LEAVE },
     ],
   },
   {
