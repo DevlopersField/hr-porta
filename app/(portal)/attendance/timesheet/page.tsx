@@ -6,6 +6,7 @@ import { requireSession } from '@/lib/auth';
 import { listMonth } from '@/lib/db/attendance';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
+import { StatusPill } from '@/components/ui/StatusPill';
 
 // ============= HELPERS =============
 function formatHM(totalMinutes: number): string {
@@ -86,7 +87,7 @@ export default async function TimesheetPage({
                 {/* eslint-disable-next-line react/forbid-dom-props */}
                 <td data-label="In" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{new Date(d.clockIn).toLocaleTimeString()}</td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td data-label="Out" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{d.clockOut ? new Date(d.clockOut).toLocaleTimeString() : <em>open</em>}</td>
+                <td data-label="Out" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{d.clockOut ? new Date(d.clockOut).toLocaleTimeString() : <StatusPill tone="amber">Open</StatusPill>}</td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
                 <td data-label="Hours" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{formatHM(d.totalMinutes)}</td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}

@@ -7,6 +7,7 @@ import { requireSession } from '@/lib/auth';
 import { canViewPeople, ForbiddenError, hasPermission, PERMISSIONS } from '@/lib/permissions';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
+import { StatusPill } from '@/components/ui/StatusPill';
 
 // ============= PAGE =============
 export default async function PeoplePage({
@@ -100,7 +101,9 @@ export default async function PeoplePage({
                 {/* eslint-disable-next-line react/forbid-dom-props */}
                 <td data-label="Title" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{p.jobTitle || '—'}</td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td data-label="Status" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{p.active ? 'Active' : 'Inactive'}</td>
+                <td data-label="Status" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>
+                  <StatusPill tone={p.active ? 'green' : 'red'}>{p.active ? 'Active' : 'Inactive'}</StatusPill>
+                </td>
               </tr>
             ))}
           </tbody>

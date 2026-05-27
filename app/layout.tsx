@@ -37,7 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         <ThemeInjector settings={settings} intent={intent} />
       </head>
-      <body className="bg-mesh">{children}</body>
+      <body>{children}</body>
     </html>
   );
 }

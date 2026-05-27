@@ -5,6 +5,7 @@ import { requireSession } from '@/lib/auth';
 import { listUserLeaves, getLeaveBalance, LEAVE_TYPES, type LeaveType } from '@/lib/db/leaves';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
+import { StatusPill } from '@/components/ui/StatusPill';
 import Link from 'next/link';
 import { withdrawLeaveAction } from '../actions';
 
@@ -83,7 +84,9 @@ export default async function LeaveBalancePage() {
                 {/* eslint-disable-next-line react/forbid-dom-props */}
                 <td data-label="Days" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{r.days}</td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td data-label="Status" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{r.status}</td>
+                <td data-label="Status" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>
+                  <StatusPill tone={r.status === 'approved' ? 'green' : r.status === 'rejected' ? 'red' : 'amber'}>{r.status}</StatusPill>
+                </td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
                 <td data-label="Action" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>
                   {r.status === 'pending' && (
