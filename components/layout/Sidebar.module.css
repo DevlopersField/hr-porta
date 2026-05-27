@@ -39,10 +39,11 @@
   text-align: left;
   transition: background 120ms;
 }
-.item:hover { background: var(--color-surface); }
+.item:hover { background: var(--color-card-hover); }
 .active {
-  background: var(--color-surface);
+  background: var(--color-card-hover);
   box-shadow: inset 3px 0 0 var(--color-primary);
+  color: var(--color-primary);
   font-weight: 500;
 }
 .nested { padding-left: 36px; font-size: 13px; }
@@ -61,7 +62,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 10px 12px;
-  background: var(--color-surface);
+  background: var(--color-card-hover);
   border-radius: var(--radius-md);
 }
 .userCardName { font-size: 13px; font-weight: 500; }
