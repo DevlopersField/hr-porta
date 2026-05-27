@@ -73,3 +73,31 @@
   padding: 4px;
 }
 .signOut:hover { color: var(--color-text); }
+
+/* ============= DRAWER MODE (<lg) ============= */
+@media (max-width: 1023px) {
+  .sidebar {
+    position: fixed;
+    top: 16px;
+    bottom: 16px;
+    left: 16px;
+    z-index: 30;
+    transform: translateX(calc(-100% - 16px));
+    transition: transform 220ms ease;
+  }
+  [data-drawer-open="true"] .sidebar {
+    transform: translateX(0);
+  }
+}
+
+/* ============= MOBILE (<sm): smaller padding ============= */
+@media (max-width: 639px) {
+  .sidebar {
+    top: 12px;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: 320px;
+  }
+}
