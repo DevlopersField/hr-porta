@@ -110,13 +110,20 @@ export async function decideLeaveRequest(
   if (userId === decidedBy) {
     throw new Error('Cannot decide your own leave request');
   }
-  await updateJson(pathFor(userId), LeaveFileSchema, EMPTY, (current) => ({
-    requests: current.requests.map(r =>
-      r.id === id
-        ? { ...r, status: decision, decidedBy, decidedAt: new Date().toISOString(), decisionNote: decisionNote ?? null }
-        : r,
-    ),
-  }));
+  await updateJson(pathFor(userId), LeaveFileSchema, EMPTY, (current) => {
+    const target = current.requests.find(r => r.id === id);
+    if (!target) throw new Error('Leave request not found');
+    if (target.status !== 'pending') {
+      throw new Error(`Leave request already ${target.status}`);
+    }
+    return {
+      requests: current.requests.map(r =>
+        r.id === id
+          ? { ...r, status: decision, decidedBy, decidedAt: new Date().toISOString(), decisionNote: decisionNote ?? null }
+          : r,
+      ),
+    };
+  });
 }
 
 export async function withdrawLeaveRequest(userId: string, id: string): Promise<void> {

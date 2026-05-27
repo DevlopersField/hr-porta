@@ -75,6 +75,34 @@ describe('decideLeaveRequest', () => {
     expect(after?.decidedAt).not.toBeNull();
   });
 
+  it('throws when request id not found', async () => {
+    const { decideLeaveRequest } = await import('./leaves');
+    await expect(
+      decideLeaveRequest('u1', 'lv_doesnotexist', 'approved', 'manager-x'),
+    ).rejects.toThrow(/Leave request not found/i);
+  });
+
+  it('throws when request is not pending (already decided)', async () => {
+    const { createLeaveRequest, decideLeaveRequest, getLeaveRequest } = await import('./leaves');
+    const req = await createLeaveRequest({
+      userId: 'u1',
+      type: 'annual',
+      startDate: '2026-05-01',
+      endDate: '2026-05-05',
+      days: 5,
+      reason: 'vacation',
+    });
+    await decideLeaveRequest('u1', req.id, 'approved', 'manager-x');
+    // Second decision on the same request must fail.
+    await expect(
+      decideLeaveRequest('u1', req.id, 'rejected', 'manager-x'),
+    ).rejects.toThrow(/already approved/i);
+    // First decision preserved.
+    const after = await getLeaveRequest('u1', req.id);
+    expect(after?.status).toBe('approved');
+    expect(after?.decidedBy).toBe('manager-x');
+  });
+
   it('enforces self-approval check at the data layer (throws when userId === decidedBy)', async () => {
     const { createLeaveRequest, decideLeaveRequest, getLeaveRequest } = await import('./leaves');
     const req = await createLeaveRequest({
