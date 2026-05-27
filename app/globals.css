@@ -61,3 +61,36 @@ html, body {
     radial-gradient(at 0% 100%, rgba(236, 72, 153, 0.10) 0px, transparent 50%),
     var(--color-bg);
 }
+
+/* ============= MARKDOWN DOC CONTENT ============= */
+.prose-doc h1 { font-size: 24px; font-weight: 600; margin: 0 0 16px; line-height: 32px; }
+.prose-doc h2 { font-size: 20px; font-weight: 600; margin: 24px 0 12px; line-height: 28px; }
+.prose-doc h3 { font-size: 16px; font-weight: 600; margin: 20px 0 8px; line-height: 24px; }
+.prose-doc p  { font-size: 14px; line-height: 22px; margin: 0 0 12px; }
+.prose-doc ul, .prose-doc ol { padding-left: 24px; margin: 0 0 12px; }
+.prose-doc li { font-size: 14px; line-height: 22px; margin: 4px 0; }
+.prose-doc a  { color: var(--color-primary); text-decoration: underline; }
+.prose-doc a:hover { color: var(--color-primary-hover); }
+.prose-doc code {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 13px;
+  background: var(--color-surface);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.prose-doc pre {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  overflow-x: auto;
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+.prose-doc pre code { background: transparent; padding: 0; }
+.prose-doc blockquote {
+  border-left: 3px solid var(--color-border);
+  padding: 0 16px;
+  margin: 0 0 12px;
+  color: var(--color-text-muted);
+}
+.prose-doc hr { border: none; border-top: 1px solid var(--color-border); margin: 24px 0; }
