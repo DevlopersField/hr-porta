@@ -32,7 +32,7 @@ export async function seedIfEmpty(): Promise<void> {
   // Create bootstrap admin if no users exist
   const users = await listUsers();
   if (users.length === 0) {
-    const email = process.env.BOOTSTRAP_ADMIN_EMAIL ?? 'admin@local';
+    const email = process.env.BOOTSTRAP_ADMIN_EMAIL ?? 'admin@local.test';
     const tempPassword = crypto.randomBytes(12).toString('base64url');
     const passwordHash = await bcrypt.hash(tempPassword, 12);
     await createUser({

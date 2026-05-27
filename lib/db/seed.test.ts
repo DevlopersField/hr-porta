@@ -46,4 +46,15 @@ describe('seedIfEmpty', () => {
     // Expect this to throw because Zod's email validator rejects an email without a TLD.
     await expect(seedIfEmpty()).rejects.toThrow();
   });
+
+  it('succeeds with default BOOTSTRAP_ADMIN_EMAIL when env var is unset', async () => {
+    delete process.env.BOOTSTRAP_ADMIN_EMAIL;
+    const { seedIfEmpty } = await import('./seed');
+    const { listUsers } = await import('./users');
+    await expect(seedIfEmpty()).resolves.toBeUndefined();
+    const users = await listUsers();
+    expect(users.length).toBe(1);
+    expect(users[0]!.email).toBe('admin@local.test');
+    expect(users[0]!.displayName).toBe('Bootstrap Admin');
+  });
 });
