@@ -4,7 +4,7 @@
 import { notFound } from 'next/navigation';
 import { getUserById, listUsers } from '@/lib/db/users';
 import { requireSession } from '@/lib/auth';
-import { hasPermission, PERMISSIONS } from '@/lib/permissions';
+import { canViewPeople, ForbiddenError, hasPermission, PERMISSIONS } from '@/lib/permissions';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -25,6 +25,9 @@ export default async function UserPage({
   searchParams: Promise<{ newPassword?: string; resetPassword?: string }>;
 }) {
   const actor = await requireSession();
+  if (!canViewPeople(actor)) {
+    throw new ForbiddenError('You do not have permission to view people');
+  }
   const { userId } = await params;
   const { newPassword, resetPassword } = await searchParams;
   const user = await getUserById(userId);

@@ -61,3 +61,16 @@ export function requirePermission(user: UserShape, perm: Permission): void {
     throw new ForbiddenError(`Missing permission: ${perm}`);
   }
 }
+
+// ============= COMPOSITE GATES =============
+const PEOPLE_VIEW_PERMS: Permission[] = [
+  PERMISSIONS.VIEW_ALL_PEOPLE,
+  PERMISSIONS.EDIT_USER_PROFILES,
+  PERMISSIONS.MANAGE_PERMISSIONS,
+  PERMISSIONS.CREATE_USERS,
+  PERMISSIONS.DEACTIVATE_USERS,
+];
+
+export function canViewPeople(user: UserShape): boolean {
+  return hasAnyPermission(user, PEOPLE_VIEW_PERMS);
+}

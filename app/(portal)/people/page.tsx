@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { listUsers } from '@/lib/db/users';
 import { requireSession } from '@/lib/auth';
-import { hasPermission, PERMISSIONS } from '@/lib/permissions';
+import { canViewPeople, ForbiddenError, hasPermission, PERMISSIONS } from '@/lib/permissions';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
 
@@ -15,6 +15,9 @@ export default async function PeoplePage({
   searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   const user = await requireSession();
+  if (!canViewPeople(user)) {
+    throw new ForbiddenError('You do not have permission to view people');
+  }
   const { q = '', page = '1' } = await searchParams;
   const allUsers = await listUsers();
 

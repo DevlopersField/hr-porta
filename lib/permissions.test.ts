@@ -6,6 +6,7 @@ import {
   requirePermission,
   ForbiddenError,
   PERMISSIONS,
+  canViewPeople,
 } from './permissions';
 
 describe('hasPermission', () => {
@@ -52,6 +53,40 @@ describe('requirePermission', () => {
   it("does NOT throw when user has '*' wildcard", () => {
     const user = { permissions: ['*'] };
     expect(() => requirePermission(user, 'manage_settings')).not.toThrow();
+  });
+});
+
+describe('canViewPeople', () => {
+  it('returns true for user with VIEW_ALL_PEOPLE', () => {
+    expect(canViewPeople({ permissions: ['view_all_people'] })).toBe(true);
+  });
+
+  it('returns true for user with EDIT_USER_PROFILES', () => {
+    expect(canViewPeople({ permissions: ['edit_user_profiles'] })).toBe(true);
+  });
+
+  it('returns true for user with MANAGE_PERMISSIONS', () => {
+    expect(canViewPeople({ permissions: ['manage_permissions'] })).toBe(true);
+  });
+
+  it('returns true for user with CREATE_USERS', () => {
+    expect(canViewPeople({ permissions: ['create_users'] })).toBe(true);
+  });
+
+  it('returns true for user with DEACTIVATE_USERS', () => {
+    expect(canViewPeople({ permissions: ['deactivate_users'] })).toBe(true);
+  });
+
+  it("returns true for super-admin (wildcard '*')", () => {
+    expect(canViewPeople({ permissions: ['*'] })).toBe(true);
+  });
+
+  it('returns false for user with no people permissions', () => {
+    expect(canViewPeople({ permissions: [] })).toBe(false);
+  });
+
+  it('returns false for user with unrelated permissions only', () => {
+    expect(canViewPeople({ permissions: ['manage_settings', 'approve_leave'] })).toBe(false);
   });
 });
 
