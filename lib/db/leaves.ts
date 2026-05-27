@@ -107,6 +107,9 @@ export async function decideLeaveRequest(
   decidedBy: string,
   decisionNote?: string,
 ): Promise<void> {
+  if (userId === decidedBy) {
+    throw new Error('Cannot decide your own leave request');
+  }
   await updateJson(pathFor(userId), LeaveFileSchema, EMPTY, (current) => ({
     requests: current.requests.map(r =>
       r.id === id

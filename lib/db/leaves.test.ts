@@ -75,7 +75,7 @@ describe('decideLeaveRequest', () => {
     expect(after?.decidedAt).not.toBeNull();
   });
 
-  it("does NOT enforce self-approval at the data layer (characterizes the gap)", async () => {
+  it('enforces self-approval check at the data layer (throws when userId === decidedBy)', async () => {
     const { createLeaveRequest, decideLeaveRequest, getLeaveRequest } = await import('./leaves');
     const req = await createLeaveRequest({
       userId: 'u1',
@@ -85,11 +85,12 @@ describe('decideLeaveRequest', () => {
       days: 5,
       reason: 'vacation',
     });
-    // Same user approving themselves: the data layer accepts it silently.
-    await decideLeaveRequest('u1', req.id, 'approved', 'u1');
+    // Same user approving themselves: the data layer must reject.
+    await expect(decideLeaveRequest('u1', req.id, 'approved', 'u1')).rejects.toThrow(/Cannot decide your own/i);
+    // Request remains pending and undecided.
     const after = await getLeaveRequest('u1', req.id);
-    expect(after?.status).toBe('approved');
-    expect(after?.decidedBy).toBe('u1');
+    expect(after?.status).toBe('pending');
+    expect(after?.decidedBy).toBeNull();
   });
 });
 
