@@ -50,7 +50,7 @@ export default async function LeaveBalancePage() {
       {/* ============= HISTORY ============= */}
       <GlassPanel className="p-0 overflow-hidden">
         {/* eslint-disable-next-line react/forbid-dom-props */}
-        <table style={{ width: '100%', borderCollapse: 'collapse' } as React.CSSProperties}>
+        <table className="responsive-card" style={{ width: '100%', borderCollapse: 'collapse' } as React.CSSProperties}>
           <thead>
             {/* eslint-disable-next-line react/forbid-dom-props */}
             <tr style={{ background: 'var(--color-surface)' } as React.CSSProperties}>
@@ -77,15 +77,15 @@ export default async function LeaveBalancePage() {
               // eslint-disable-next-line react/forbid-dom-props
               <tr key={r.id} style={{ borderTop: '1px solid var(--color-border)' } as React.CSSProperties}>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{TYPE_LABELS[r.type]}</td>
+                <td data-label="Type" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{TYPE_LABELS[r.type]}</td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{r.startDate} → {r.endDate}</td>
+                <td data-label="Dates" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{r.startDate} → {r.endDate}</td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{r.days}</td>
+                <td data-label="Days" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{r.days}</td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{r.status}</td>
+                <td data-label="Status" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{r.status}</td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>
+                <td data-label="Action" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>
                   {r.status === 'pending' && (
                     <form action={async () => { 'use server'; await withdrawLeaveAction(r.id); }}>
                       <Button type="submit" size="sm" variant="ghost">Withdraw</Button>
