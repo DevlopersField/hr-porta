@@ -1,12 +1,14 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/(portal)/layout.tsx
 
 // ============= IMPORTS =============
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { getSettings } from '@/lib/db/settings';
+import { resolveTheme } from '@/lib/theme';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { TopBar } from '@/components/layout/TopBar';
+import { PortalShell } from '@/components/layout/PortalShell';
 
 // ============= LAYOUT =============
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -14,33 +16,27 @@ export default async function PortalLayout({ children }: { children: React.React
   if (!session?.user) redirect('/login');
   const settings = await getSettings();
 
+  // ============= RESOLVE THEME (for the toggle's current value) =============
+  const cookieStore = await cookies();
+  const themeCookie = cookieStore.get('hrp_theme')?.value;
+  const { intent } = resolveTheme({
+    cookie: themeCookie,
+    settingsDefault: settings.appearance.defaultMode,
+    prefersDark: undefined,
+  });
+
   return (
-    <div
-      className="grid min-h-screen"
-      // eslint-disable-next-line react/forbid-dom-props
-      style={
-        {
-          gridTemplateColumns: 'var(--sidebar-width) 1fr',
-          padding: '16px',
-          gap: '16px',
-        } as React.CSSProperties
+    <PortalShell
+      sidebar={
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        <Sidebar user={session.user as any} settings={settings} />
+      }
+      topbar={
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        <TopBar user={session.user as any} themeIntent={intent} />
       }
     >
-      <Sidebar user={session.user as any} settings={settings} />
-      <div
-        className="grid"
-        // eslint-disable-next-line react/forbid-dom-props
-        style={
-          {
-            gridTemplateRows: 'var(--topbar-height) 1fr',
-            gap: '16px',
-            minWidth: 0,
-          } as React.CSSProperties
-        }
-      >
-        <TopBar user={session.user as any} />
-        <main className="overflow-y-auto p-6">{children}</main>
-      </div>
-    </div>
+      {children}
+    </PortalShell>
   );
 }
