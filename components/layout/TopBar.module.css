@@ -31,7 +31,7 @@
   transition: background 120ms, color 120ms;
 }
 .hamburger:hover {
-  background: var(--color-surface);
+  background: var(--color-card-hover);
   color: var(--color-text);
 }
 @media (max-width: 1023px) {
@@ -43,8 +43,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
+  background: var(--color-card-hover);
+  border-radius: var(--radius-pill);
   padding: 6px 12px;
   width: 360px;
   max-width: 50vw;
@@ -76,12 +76,12 @@
   padding: 6px;
   border-radius: var(--radius-sm);
 }
-.iconBtn:hover { background: var(--color-surface); color: var(--color-text); }
+.iconBtn:hover { background: var(--color-card-hover); color: var(--color-text); }
 .userBadge {
   font-size: 13px;
   font-weight: 500;
   padding: 6px 12px;
-  background: var(--color-surface);
+  background: var(--color-card-hover);
   border-radius: var(--radius-md);
   max-width: 200px;
   overflow: hidden;
