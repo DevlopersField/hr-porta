@@ -7,6 +7,7 @@ import {
   ForbiddenError,
   PERMISSIONS,
   canViewPeople,
+  mergeSubmittedPermissions,
 } from './permissions';
 
 describe('hasPermission', () => {
@@ -87,6 +88,43 @@ describe('canViewPeople', () => {
 
   it('returns false for user with unrelated permissions only', () => {
     expect(canViewPeople({ permissions: ['manage_settings', 'approve_leave'] })).toBe(false);
+  });
+});
+
+describe('mergeSubmittedPermissions', () => {
+  it("preserves '*' wildcard when user is currently super-admin", () => {
+    // A malicious or buggy POST tries to demote a super-admin by omitting '*'.
+    const result = mergeSubmittedPermissions(['*'], ['view_all_people']);
+    expect(result).toContain('*');
+  });
+
+  it("preserves '*' even when submitted list is empty", () => {
+    const result = mergeSubmittedPermissions(['*'], []);
+    expect(result).toEqual(['*']);
+  });
+
+  it('filters out unknown / unsafe submitted permissions', () => {
+    const result = mergeSubmittedPermissions(
+      ['view_all_people'],
+      ['view_all_people', 'not_a_real_permission', '*'],
+    );
+    expect(result).toContain('view_all_people');
+    expect(result).not.toContain('not_a_real_permission');
+    // '*' should NOT sneak in for a non-super-admin via submission.
+    expect(result).not.toContain('*');
+  });
+
+  it('accepts valid submitted permissions for a non-super-admin user', () => {
+    const result = mergeSubmittedPermissions(
+      ['view_all_people'],
+      ['approve_leave', 'view_team_attendance'],
+    );
+    expect(result).toEqual(['approve_leave', 'view_team_attendance']);
+  });
+
+  it('returns empty array when non-super-admin user has no valid permissions submitted', () => {
+    const result = mergeSubmittedPermissions(['view_all_people'], []);
+    expect(result).toEqual([]);
   });
 });
 

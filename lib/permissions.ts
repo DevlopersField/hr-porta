@@ -74,3 +74,17 @@ const PEOPLE_VIEW_PERMS: Permission[] = [
 export function canViewPeople(user: UserShape): boolean {
   return hasAnyPermission(user, PEOPLE_VIEW_PERMS);
 }
+
+// ============= MERGE SUBMITTED PERMISSIONS =============
+// Filter submitted permissions through the allowlist of known Permission values
+// (excluding the '*' wildcard, which must never be granted via form submission).
+// If the user is currently a super-admin (has '*'), preserve the wildcard so that
+// a crafted POST cannot silently demote them.
+export function mergeSubmittedPermissions(current: string[], submitted: string[]): string[] {
+  const allow = new Set<string>(ALL_PERMISSIONS);
+  const validated = submitted.filter(p => allow.has(p));
+  if (current.includes('*')) {
+    return ['*', ...validated];
+  }
+  return validated;
+}

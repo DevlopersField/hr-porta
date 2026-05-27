@@ -8,7 +8,7 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
 import { requireSession } from '@/lib/auth';
-import { PERMISSIONS, ALL_PERMISSIONS } from '@/lib/permissions';
+import { PERMISSIONS, mergeSubmittedPermissions } from '@/lib/permissions';
 import {
   createUser,
   deactivateUser,
@@ -77,7 +77,9 @@ export async function updateProfileAction(userId: string, formData: FormData): P
 export async function updatePermissionsAction(userId: string, formData: FormData): Promise<void> {
   const actor = await requireSession(PERMISSIONS.MANAGE_PERMISSIONS);
   const submitted = formData.getAll('permissions').map(String);
-  const validated = submitted.filter(p => (ALL_PERMISSIONS as readonly string[]).includes(p));
+  const target = await getUserById(userId);
+  if (!target) throw new Error('User not found');
+  const validated = mergeSubmittedPermissions(target.permissions, submitted);
   await updateUserPermissions(userId, validated);
   await auditLog({ actorId: actor.id, action: 'user.update_permissions', target: userId, details: { permissions: validated } });
   revalidatePath(`/people/${userId}`);
