@@ -35,3 +35,26 @@ export function settingsToCssBlock(settings: Settings): string {
   const decls = Object.entries(vars).map(([k, v]) => `${k}: ${v};`).join(' ');
   return `:root { ${decls} }`;
 }
+
+// ============= THEME RESOLUTION =============
+export type ThemeIntent = 'light' | 'dark' | 'system';
+export type ThemeResolved = 'light' | 'dark';
+
+const VALID_INTENTS = ['light', 'dark', 'system'] as const;
+
+function isValidIntent(value: string | undefined): value is ThemeIntent {
+  return value !== undefined && (VALID_INTENTS as readonly string[]).includes(value);
+}
+
+export function resolveTheme(args: {
+  cookie: string | undefined;
+  settingsDefault: 'light' | 'dark';
+  prefersDark: boolean | undefined;
+}): { intent: ThemeIntent; resolved: ThemeResolved | null } {
+  const intent: ThemeIntent = isValidIntent(args.cookie) ? args.cookie : args.settingsDefault;
+  if (intent === 'system') {
+    if (args.prefersDark === undefined) return { intent, resolved: null };
+    return { intent, resolved: args.prefersDark ? 'dark' : 'light' };
+  }
+  return { intent, resolved: intent };
+}

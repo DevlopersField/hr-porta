@@ -55,7 +55,7 @@ export default async function TimesheetPage({
 
       <GlassPanel className="p-0 overflow-hidden">
         {/* eslint-disable-next-line react/forbid-dom-props */}
-        <table style={{ width: '100%', borderCollapse: 'collapse' } as React.CSSProperties}>
+        <table className="responsive-card" style={{ width: '100%', borderCollapse: 'collapse' } as React.CSSProperties}>
           <thead>
             {/* eslint-disable-next-line react/forbid-dom-props */}
             <tr style={{ background: 'var(--color-surface)' } as React.CSSProperties}>
@@ -82,15 +82,15 @@ export default async function TimesheetPage({
               // eslint-disable-next-line react/forbid-dom-props
               <tr key={d.date} style={{ borderTop: '1px solid var(--color-border)' } as React.CSSProperties}>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{d.date}</td>
+                <td data-label="Date" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{d.date}</td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{new Date(d.clockIn).toLocaleTimeString()}</td>
+                <td data-label="In" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{new Date(d.clockIn).toLocaleTimeString()}</td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{d.clockOut ? new Date(d.clockOut).toLocaleTimeString() : <em>open</em>}</td>
+                <td data-label="Out" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{d.clockOut ? new Date(d.clockOut).toLocaleTimeString() : <em>open</em>}</td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{formatHM(d.totalMinutes)}</td>
+                <td data-label="Hours" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{formatHM(d.totalMinutes)}</td>
                 {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--color-text-muted)' } as React.CSSProperties}>{d.note}</td>
+                <td data-label="Note" style={{ padding: '12px 16px', fontSize: '13px', color: 'var(--color-text-muted)' } as React.CSSProperties}>{d.note}</td>
               </tr>
             ))}
           </tbody>
