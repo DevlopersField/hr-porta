@@ -31,6 +31,11 @@
   --radius-pill: 999px;
   --sidebar-width: 264px;
   --topbar-height: 64px;
+  /* Chart tokens — magnitude uses --color-primary; status trio below (validated) */
+  --chart-good: #15803D;
+  --chart-warn: #B45309;
+  --chart-bad: #BE123C;
+  --chart-track: rgba(0, 0, 0, 0.06);
 }
 
 /* ============= DARK PALETTE (coffee + sage green) ============= */
@@ -57,6 +62,11 @@
   --shadow-card: 0 1px 3px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.3);
   --shadow-elevated: 0 1px 3px rgba(0,0,0,0.5), 0 12px 32px rgba(0,0,0,0.4);
   --shadow-glass: 0 1px 3px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.3);
+  /* Chart tokens — dark mode (validated against #232320 surface) */
+  --chart-good: #4ADE80;
+  --chart-warn: #FBBF24;
+  --chart-bad: #FB7185;
+  --chart-track: rgba(255, 255, 255, 0.08);
 }
 
 /* ============= BASE ============= */

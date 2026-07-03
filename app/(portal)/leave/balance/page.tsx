@@ -6,6 +6,7 @@ import { listUserLeaves, getLeaveBalance, LEAVE_TYPES, type LeaveType } from '@/
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { BarChart, type BarDatum } from '@/components/ui/BarChart';
 import Link from 'next/link';
 import { withdrawLeaveAction } from '../actions';
 
@@ -21,6 +22,19 @@ export default async function LeaveBalancePage() {
   const user = await requireSession();
   const balance = await getLeaveBalance(user.id);
   const history = (await listUserLeaves(user.id)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  // ============= USAGE CHART (used days per type, scaled to the largest quota) =============
+  const quotaCeiling = Math.max(...LEAVE_TYPES.map(t => balance[t].quota ?? 0), 1);
+  const usageData: BarDatum[] = LEAVE_TYPES.map(t => {
+    const b = balance[t];
+    const overQuota = b.quota !== null && b.used > b.quota;
+    return {
+      label: TYPE_LABELS[t],
+      value: b.used,
+      tone: overQuota ? 'bad' : 'primary',
+      display: b.quota === null ? `${b.used} used` : `${b.used} / ${b.quota}`,
+    };
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -47,6 +61,13 @@ export default async function LeaveBalancePage() {
           );
         })}
       </div>
+
+      {/* ============= USAGE CHART ============= */}
+      <GlassPanel>
+        <h2 className="text-lg font-semibold">Leave used this year</h2>
+        <p className="text-sm text-text-muted mb-4">Approved days against your quota</p>
+        <BarChart data={usageData} max={quotaCeiling} ariaLabel="Leave days used against quota, by type" />
+      </GlassPanel>
 
       {/* ============= HISTORY ============= */}
       <GlassPanel className="p-0 overflow-hidden">

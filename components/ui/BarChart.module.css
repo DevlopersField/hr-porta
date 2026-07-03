@@ -1,0 +1,58 @@
+/* components/ui/BarChart.module.css */
+
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* air between bars — the separator is negative space, not a stroke */
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(72px, 130px) 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.label {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track {
+  height: 20px; /* <= 24px cap */
+  background: var(--chart-track);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.fill {
+  height: 20px;
+  min-width: 2px;
+  border-radius: 0 4px 4px 0; /* rounded data-end, square at the baseline */
+  background: var(--color-primary); /* magnitude default */
+  transition: filter 120ms ease;
+}
+
+.fill[data-tone='good'] { background: var(--chart-good); }
+.fill[data-tone='warn'] { background: var(--chart-warn); }
+.fill[data-tone='bad']  { background: var(--chart-bad); }
+
+.row:hover .fill { filter: brightness(1.08); }
+
+.value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums; /* align a column of numbers */
+  text-align: right;
+  min-width: 28px;
+}
+
+.empty {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  padding: 8px 0;
+}
