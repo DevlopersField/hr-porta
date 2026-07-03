@@ -6,9 +6,13 @@ import type { Settings } from '@/lib/db/settings';
 // ============= CSS VAR MAP =============
 export function settingsToCssVars(settings: Settings): Record<string, string> {
   const a = settings.appearance;
+  // Only palette + layout dimensions come from admin settings. Structural tokens
+  // (radii, shadows) live in globals.css and are NOT overridden here, so the
+  // Donezo look stays consistent and glass artifacts don't leak back in.
   return {
     '--color-primary': a.primaryColor,
     '--color-primary-hover': a.primaryHoverColor,
+    '--color-primary-fill': a.primaryColor,
     '--color-accent': a.accentColor,
     '--color-bg': a.backgroundTint,
     '--color-surface': a.surfaceColor,
@@ -16,24 +20,19 @@ export function settingsToCssVars(settings: Settings): Record<string, string> {
     '--color-border': a.borderColor,
     '--color-text': a.textColor,
     '--color-text-muted': a.textMutedColor,
-    '--glass-opacity': String(a.glassOpacity / 100),
-    '--glass-blur': `${a.glassBlurPx}px`,
-    '--shadow-glass': '0 8px 32px 0 rgba(31, 38, 135, 0.12)',
-    '--shadow-elevated': '0 12px 40px 0 rgba(31, 38, 135, 0.18)',
-    '--radius-sm': '8px',
-    '--radius-md': '12px',
-    '--radius-lg': '20px',
     '--sidebar-width': `${settings.layout.sidebarWidthPx}px`,
-    '--sidebar-width-collapsed': '72px',
     '--topbar-height': '64px',
   };
 }
 
 // ============= INLINE STYLE STRING =============
+// Admin palette overrides apply to LIGHT mode only. The dark palette is fixed in
+// globals.css under [data-theme="dark"]; scoping to :root:not([data-theme="dark"])
+// (specificity 0,2,0) keeps these overrides from ever clobbering dark mode.
 export function settingsToCssBlock(settings: Settings): string {
   const vars = settingsToCssVars(settings);
   const decls = Object.entries(vars).map(([k, v]) => `${k}: ${v};`).join(' ');
-  return `:root { ${decls} }`;
+  return `:root:not([data-theme="dark"]) { ${decls} }`;
 }
 
 // ============= THEME RESOLUTION =============

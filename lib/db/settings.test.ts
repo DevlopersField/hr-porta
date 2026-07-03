@@ -10,7 +10,7 @@ describe('getSettings (defaults)', () => {
     const s = await getSettings();
     expect(s.branding.companyName).toBe('Acme Inc.');
     // sanity: other defaults too
-    expect(s.appearance.primaryColor).toBe('#4F46E5');
+    expect(s.appearance.primaryColor).toBe('#1F4D2F');
   });
 });
 
@@ -19,7 +19,7 @@ describe('saveSettings (deep merge)', () => {
     const { saveSettings } = await import('./settings');
     const out = await saveSettings({ branding: { companyName: 'X' } } as any, 'user1');
     expect(out.branding.companyName).toBe('X');
-    expect(out.appearance.primaryColor).toBe('#4F46E5');
+    expect(out.appearance.primaryColor).toBe('#1F4D2F');
   });
 
   it("preserves branding.companyName across a second save that only patches appearance", async () => {
