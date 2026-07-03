@@ -1,7 +1,15 @@
 # CLAUDE.md — HR Portal handoff for future Claude sessions
 
-> **Last updated:** 2026-05-27 · HEAD `31b393c` · 116 commits past baseline `da0d090`
+> **Last updated:** 2026-07-03 · all 7 previously-deferred modules now shipped
 > Read this first. It's a load-bearing summary so you can continue work without re-discovering everything.
+
+> **2026-07-03 buildout:** Every nav route that used to 404 is now a working module
+> (Profile, Engage, To-do/Tasks, To-do/Approvals, Request Hub, Workflow Delegates,
+> Helpdesk, Salary, Goals, Reviews). Plus Phase-0 foundation: demo-org seed
+> (`SEED_DEMO=true`), first-login password change (`/change-password`), and the
+> temp-password-in-URL leak is fixed (now a one-time HttpOnly cookie flash via
+> `lib/flash.ts`). Roadmap spec: `docs/superpowers/specs/2026-07-03-hr-portal-module-buildout.md`.
+> Test count is now **163** (was 98). `tsc --noEmit`, `vitest run`, and `next build` all clean.
 
 ## What this is
 
@@ -27,7 +35,9 @@ node_modules/.bin/next --version || pnpm install
 node_modules/.bin/next dev
 ```
 
-First boot prints `BOOTSTRAP ADMIN CREATED — email=admin@local.test tempPassword=<...>` via Pino warn. Log in with that. The `mustChangePassword` flag is set but no forced-change UI exists yet (deferred).
+First boot prints `BOOTSTRAP ADMIN CREATED — email=admin@local.test tempPassword=<...>` via Pino warn. Log in with that. The `mustChangePassword` flag now triggers a forced redirect to `/change-password` (the portal layout enforces it).
+
+**Demo data:** set `SEED_DEMO=true` (optional `DEMO_PASSWORD`, default `Password123!`) to seed an 11-person, 3-team demo company (`*@acme.test`) on first boot — managers, reports, and sample leave. Idempotent; leaves real deploys clean when unset.
 
 **Do NOT use `BOOTSTRAP_ADMIN_EMAIL=admin@local`** — Zod v4's email validator requires a TLD. Use `admin@local.test` (already in `.env.example`).
 
@@ -58,11 +68,20 @@ A proper fix is to run `pnpm approve-builds` once and commit the result. Hasn't 
 | Leave | `/leave/{balance,request,approvals}` | `data/leaves/{userId}.json`, 4 types, status pills, self-approval blocked |
 | Attendance | `/attendance/{clock,timesheet}` | `data/attendance/{userId}.json`, single open day, Open/Closed status pills |
 | Document Center | `/document-center`, `/document-center/[slug]` | Markdown files in `content/document-center/`, gray-matter + marked + DOMPurify |
+| Profile | `/my-worklife/profile` | `data/profiles/{userId}.json` (extended fields) + `users.json` identity; self-edit + avatar upload |
+| Requests | `/request-hub`, `/todo/tasks`, `/todo/approvals` | `data/requests/{userId}.json`, `tasks/{userId}.json`; routed to manager, unified approvals inbox |
+| Delegates | `/workflow-delegates` | `data/delegates.json`; OOO approval delegation honored by the approvals inbox |
+| Helpdesk | `/helpdesk`, `/helpdesk/[ticketId]` | `data/helpdesk.json`; categorized tickets, threaded replies, agent queue (`EDIT_HELPDESK`) |
+| Engage | `/engage` | `data/engage.json`; announcements (`PUBLISH_ENGAGE`) + one-emoji-per-user reactions |
+| Salary | `/salary/{payslips,tax-documents}` | `data/salary/{userId}.json`; own-only view, `VIEW_ALL_SALARY` sees any, amounts kept out of audit |
+| Performance | `/my-worklife/{goals,reviews}` | `data/performance/{userId}.json`; goal progress + review lifecycle draft→submitted→finalized |
+| Account | `/change-password` | Self-service password change; `mustChangePassword` forces redirect here |
 | Infra | `/api/{health,uploads/[filename]}` | health checks, image streaming |
 
-### Deferred (nav references them, routes 404)
+### Deferred
 
-Engage, My Worklife, To do, Salary, Helpdesk, Request Hub, Workflow Delegates. Nav config in [components/layout/nav-config.ts](components/layout/nav-config.ts) already references all their routes — clicking them 404s. Each follows the foundation's pattern below.
+None of the nav routes 404 anymore — all shipped as of 2026-07-03. Future work is depth/polish
+(e.g. richer home dashboard surfacing the new modules, weekend-aware leave counting, email invites).
 
 ## Architecture map
 
@@ -194,9 +213,9 @@ The foundation established these patterns. New modules MUST follow them.
 
 In rough priority order:
 
-1. **Temp passwords in URL query strings.** `createUserAction` and `resetPasswordAction` redirect with `?newPassword=…` / `?resetPassword=…`. Leaks via browser history, server access logs, Referer header. Pre-flagged. The audit-log leak (same class) was fixed in `ea24b34`.
+1. ~~**Temp passwords in URL query strings.**~~ **FIXED 2026-07-03.** `createUserAction`/`resetPasswordAction` now stash the generated password in a one-time HttpOnly, short-lived cookie (`lib/flash.ts`) read once by the `/people/[userId]` page — no longer in the URL. The audit-log leak (same class) was fixed earlier in `ea24b34`.
 
-2. **`/api/uploads/[filename]` is public.** Anyone can `GET` any uploaded file by guessing the hash-derived filename. Acceptable for branding (logo/favicon used on login page must be public) but BAD if avatar uploads land here later — design choice needs revisiting.
+2. **`/api/uploads/[filename]` is public — now actually reachable.** Anyone can `GET` any uploaded file by guessing the hash-derived filename. This was theoretical before; the new Profile module (Phase 1) lets employees upload **avatars** through this same public endpoint, so avatar images are now publicly guessable. Revisit: gate `/api/uploads` for non-branding purposes, or namespace avatars behind auth.
 
 3. **`countLeaveDays` counts weekends.** Documented as v2 deferred. Users with weekly leave hit annual quota faster than expected.
 
