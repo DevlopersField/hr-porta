@@ -13,9 +13,12 @@ import {
   type TicketStatus,
 } from '@/lib/db/helpdesk';
 import { listUsers } from '@/lib/db/users';
+import { listAttachments, type Attachment } from '@/lib/db/attachments';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { FileInput } from '@/components/ui/FileInput';
+import { AttachmentList } from '@/components/ui/AttachmentList';
 import { addReplyAction, setStatusAction } from '../actions';
 
 // ============= LABELS =============
@@ -60,6 +63,18 @@ export default async function TicketDetailPage({
   const users = await listUsers();
   const userMap = new Map(users.map(u => [u.id, u]));
 
+  // ============= ATTACHMENTS =============
+  // Batch-resolve every attachment referenced by the ticket and its replies.
+  const allAttachmentIds = [
+    ...ticket.attachmentIds,
+    ...ticket.replies.flatMap(r => r.attachmentIds),
+  ];
+  const resolvedAttachments = await listAttachments(allAttachmentIds);
+  const attachmentMap = new Map<string, Attachment>(resolvedAttachments.map(a => [a.id, a]));
+  const pickAttachments = (ids: string[]): Attachment[] =>
+    ids.map(id => attachmentMap.get(id)).filter((a): a is Attachment => a !== undefined);
+  const ticketAttachments = pickAttachments(ticket.attachmentIds);
+
   // ============= PER-ID BINDINGS =============
   const doReply = async (fd: FormData) => {
     'use server';
@@ -91,6 +106,12 @@ export default async function TicketDetailPage({
           <StatusPill tone={statusTone(ticket.status)}>{STATUS_LABELS[ticket.status]}</StatusPill>
         </div>
 
+        {ticketAttachments.length > 0 && (
+          <div className="mt-4">
+            <AttachmentList attachments={ticketAttachments} />
+          </div>
+        )}
+
         {isAgent && (
           <form action={doStatus} className="flex items-end gap-2 mt-4">
             <div className="flex flex-col gap-2">
@@ -119,6 +140,11 @@ export default async function TicketDetailPage({
               <span className="text-xs text-text-muted">{new Date(reply.createdAt).toLocaleString()}</span>
             </div>
             <p className="text-sm mt-2 whitespace-pre-line">{reply.body}</p>
+            {reply.attachmentIds.length > 0 && (
+              <div className="mt-2">
+                <AttachmentList attachments={pickAttachments(reply.attachmentIds)} compact />
+              </div>
+            )}
           </GlassPanel>
         ))}
       </div>
@@ -135,6 +161,7 @@ export default async function TicketDetailPage({
             // eslint-disable-next-line react/forbid-dom-props
             style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface-strong)', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' } as React.CSSProperties}
           />
+          <FileInput name="attachments" label="Attach files (optional)" />
           <Button type="submit" className="self-start">Send reply</Button>
         </form>
       </GlassPanel>

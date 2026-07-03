@@ -13,6 +13,15 @@ describe('createPost + listPosts', () => {
     expect(post.title).toBe('Hello');
     expect(post.body).toBe('World');
     expect(post.reactions).toEqual({});
+    expect(post.attachmentIds).toEqual([]);
+  });
+
+  it('persists attachmentIds when provided', async () => {
+    const { createPost, getPost } = await import('./engage');
+    const post = await createPost({ authorId: 'u1', title: 'Hi', body: 'b', attachmentIds: ['att_1', 'att_2'] });
+    expect(post.attachmentIds).toEqual(['att_1', 'att_2']);
+    const after = await getPost(post.id);
+    expect(after?.attachmentIds).toEqual(['att_1', 'att_2']);
   });
 
   it('lists posts newest first', async () => {

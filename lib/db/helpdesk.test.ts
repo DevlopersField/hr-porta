@@ -86,6 +86,45 @@ describe('addReply', () => {
   });
 });
 
+describe('attachmentIds', () => {
+  it('defaults ticket and first-reply attachmentIds to [] when omitted', async () => {
+    const { createTicket, getTicket } = await import('./helpdesk');
+    const t = await createTicket({ requesterId: 'u1', category: 'it', priority: 'normal', subject: 'S', body: 'b' });
+    expect(t.attachmentIds).toEqual([]);
+    expect(t.replies[0]!.attachmentIds).toEqual([]);
+    const after = await getTicket(t.id);
+    expect(after?.attachmentIds).toEqual([]);
+  });
+
+  it('persists ticket attachmentIds via setTicketAttachments and bumps updatedAt', async () => {
+    const { createTicket, setTicketAttachments, getTicket } = await import('./helpdesk');
+    const t = await createTicket({ requesterId: 'u1', category: 'it', priority: 'normal', subject: 'S', body: 'b' });
+    await setTicketAttachments(t.id, ['att_1', 'att_2']);
+    const after = await getTicket(t.id);
+    expect(after?.attachmentIds).toEqual(['att_1', 'att_2']);
+    expect(after!.updatedAt >= t.updatedAt).toBe(true);
+  });
+
+  it('sets createTicket attachmentIds when provided', async () => {
+    const { createTicket } = await import('./helpdesk');
+    const t = await createTicket({ requesterId: 'u1', category: 'it', priority: 'normal', subject: 'S', body: 'b', attachmentIds: ['att_x'] });
+    expect(t.attachmentIds).toEqual(['att_x']);
+  });
+
+  it('persists reply attachmentIds passed to addReply', async () => {
+    const { createTicket, addReply, getTicket } = await import('./helpdesk');
+    const t = await createTicket({ requesterId: 'u1', category: 'it', priority: 'normal', subject: 'S', body: 'b' });
+    await addReply(t.id, 'agent-x', 'here', ['att_r1']);
+    const after = await getTicket(t.id);
+    expect(after?.replies[1]!.attachmentIds).toEqual(['att_r1']);
+  });
+
+  it('throws when setTicketAttachments targets a missing ticket', async () => {
+    const { setTicketAttachments } = await import('./helpdesk');
+    await expect(setTicketAttachments('tkt_missing', [])).rejects.toThrow(/Ticket not found/i);
+  });
+});
+
 describe('setTicketStatus', () => {
   it('changes the status and bumps updatedAt', async () => {
     const { createTicket, setTicketStatus, getTicket } = await import('./helpdesk');

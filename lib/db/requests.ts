@@ -26,6 +26,7 @@ export const RequestSchema = z.object({
   decidedBy: z.string().nullable().default(null),
   decidedAt: z.string().nullable().default(null),
   decisionNote: z.string().nullable().default(null),
+  attachmentIds: z.array(z.string()).default([]),
 });
 export type Request = z.infer<typeof RequestSchema>;
 
@@ -80,6 +81,7 @@ export type CreateRequestInput = {
   title: string;
   details: string;
   amount?: number | null;
+  attachmentIds?: string[];
 };
 
 export async function createRequest(input: CreateRequestInput): Promise<Request> {
@@ -96,6 +98,7 @@ export async function createRequest(input: CreateRequestInput): Promise<Request>
       decidedBy: null,
       decidedAt: null,
       decisionNote: null,
+      attachmentIds: input.attachmentIds ?? [],
     };
     return { requests: [...current.requests, newReq] };
   });

@@ -21,6 +21,7 @@ export const ReplySchema = z.object({
   authorId: z.string(),
   body: z.string(),
   createdAt: z.string(),
+  attachmentIds: z.array(z.string()).default([]),
 });
 export type Reply = z.infer<typeof ReplySchema>;
 
@@ -34,6 +35,7 @@ export const TicketSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   replies: z.array(ReplySchema).default([]),
+  attachmentIds: z.array(z.string()).default([]),
 });
 export type Ticket = z.infer<typeof TicketSchema>;
 
@@ -68,6 +70,7 @@ export type CreateTicketInput = {
   priority: TicketPriority;
   subject: string;
   body: string;
+  attachmentIds?: string[];
 };
 
 export async function createTicket(input: CreateTicketInput): Promise<Ticket> {
@@ -87,8 +90,10 @@ export async function createTicket(input: CreateTicketInput): Promise<Ticket> {
         authorId: input.requesterId,
         body: input.body,
         createdAt: now,
+        attachmentIds: [],
       },
     ],
+    attachmentIds: input.attachmentIds ?? [],
   };
   const result = await updateJson(PATH, HelpdeskFileSchema, EMPTY, (current) => ({
     tickets: [...current.tickets, ticket],
@@ -96,7 +101,12 @@ export async function createTicket(input: CreateTicketInput): Promise<Ticket> {
   return result.tickets.find(t => t.id === ticket.id)!;
 }
 
-export async function addReply(ticketId: string, authorId: string, body: string): Promise<void> {
+export async function addReply(
+  ticketId: string,
+  authorId: string,
+  body: string,
+  attachmentIds: string[] = [],
+): Promise<void> {
   await updateJson(PATH, HelpdeskFileSchema, EMPTY, (current) => {
     const target = current.tickets.find(t => t.id === ticketId);
     if (!target) throw new Error('Ticket not found');
@@ -106,6 +116,7 @@ export async function addReply(ticketId: string, authorId: string, body: string)
       authorId,
       body,
       createdAt: now,
+      attachmentIds,
     };
     return {
       tickets: current.tickets.map(t =>
@@ -129,6 +140,20 @@ export async function setTicketStatus(ticketId: string, status: TicketStatus): P
     return {
       tickets: current.tickets.map(t =>
         t.id === ticketId ? { ...t, status, updatedAt: new Date().toISOString() } : t,
+      ),
+    };
+  });
+}
+
+export async function setTicketAttachments(ticketId: string, ids: string[]): Promise<void> {
+  await updateJson(PATH, HelpdeskFileSchema, EMPTY, (current) => {
+    const target = current.tickets.find(t => t.id === ticketId);
+    if (!target) throw new Error('Ticket not found');
+    return {
+      tickets: current.tickets.map(t =>
+        t.id === ticketId
+          ? { ...t, attachmentIds: ids, updatedAt: new Date().toISOString() }
+          : t,
       ),
     };
   });

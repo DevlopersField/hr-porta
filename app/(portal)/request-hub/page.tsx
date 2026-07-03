@@ -3,10 +3,13 @@
 // ============= IMPORTS =============
 import { requireSession } from '@/lib/auth';
 import { listUserRequests, REQUEST_TYPES, type RequestType } from '@/lib/db/requests';
+import { listAttachments } from '@/lib/db/attachments';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { FileInput } from '@/components/ui/FileInput';
+import { AttachmentList } from '@/components/ui/AttachmentList';
 import { submitRequestAction, withdrawRequestAction } from './actions';
 
 const TYPE_LABELS: Record<RequestType, string> = {
@@ -21,6 +24,11 @@ const TYPE_LABELS: Record<RequestType, string> = {
 export default async function RequestHubPage() {
   const user = await requireSession();
   const requests = (await listUserRequests(user.id)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  // Batch-resolve every request's attachments in a single lookup, then index by id.
+  const allAttachmentIds = requests.flatMap(r => r.attachmentIds);
+  const resolved = await listAttachments(allAttachmentIds);
+  const attachmentsById = new Map(resolved.map(a => [a.id, a]));
 
   return (
     <div className="flex flex-col gap-6">
@@ -50,6 +58,7 @@ export default async function RequestHubPage() {
             style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface-strong)', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' } as React.CSSProperties}
           />
           <Input name="amount" type="number" step="0.01" min="0" label="Amount (expense only)" />
+          <FileInput name="attachments" label="Attachments (optional)" />
           <Button type="submit" className="self-start">Submit request</Button>
         </form>
       </GlassPanel>
@@ -82,13 +91,19 @@ export default async function RequestHubPage() {
             )}
             {requests.map(r => {
               const withdraw = async () => { 'use server'; await withdrawRequestAction(r.id); };
+              const atts = r.attachmentIds
+                .map(id => attachmentsById.get(id))
+                .filter((a): a is NonNullable<typeof a> => a !== undefined);
               return (
                 // eslint-disable-next-line react/forbid-dom-props
                 <tr key={r.id} style={{ borderTop: '1px solid var(--color-border)' } as React.CSSProperties}>
                   {/* eslint-disable-next-line react/forbid-dom-props */}
                   <td data-label="Type" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{TYPE_LABELS[r.type]}</td>
                   {/* eslint-disable-next-line react/forbid-dom-props */}
-                  <td data-label="Title" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{r.title}</td>
+                  <td data-label="Title" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>
+                    {r.title}
+                    {atts.length > 0 && <AttachmentList attachments={atts} compact />}
+                  </td>
                   {/* eslint-disable-next-line react/forbid-dom-props */}
                   <td data-label="Amount" style={{ padding: '12px 16px', fontSize: '13px' } as React.CSSProperties}>{r.amount === null ? '—' : r.amount.toFixed(2)}</td>
                   {/* eslint-disable-next-line react/forbid-dom-props */}

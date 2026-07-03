@@ -19,6 +19,7 @@ import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { FileInput } from '@/components/ui/FileInput';
 import { createTicketAction } from './actions';
 
 // ============= LABELS =============
@@ -98,6 +99,7 @@ export default async function HelpdeskPage() {
             // eslint-disable-next-line react/forbid-dom-props
             style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface-strong)', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' } as React.CSSProperties}
           />
+          <FileInput name="attachments" label="Attachments (optional)" />
           <Button type="submit" className="self-start">Submit ticket</Button>
         </form>
       </GlassPanel>

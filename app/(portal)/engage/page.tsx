@@ -5,10 +5,13 @@ import { requireSession } from '@/lib/auth';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
 import { listPosts, ALLOWED_EMOJIS } from '@/lib/db/engage';
 import { listUsers } from '@/lib/db/users';
+import { listAttachments } from '@/lib/db/attachments';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { StatusPill } from '@/components/ui/StatusPill';
+import { FileInput } from '@/components/ui/FileInput';
+import { AttachmentList } from '@/components/ui/AttachmentList';
 import { createPostAction, toggleReactionAction } from './actions';
 
 // ============= PAGE =============
@@ -17,6 +20,11 @@ export default async function EngagePage() {
   const canPublish = hasPermission(user, PERMISSIONS.PUBLISH_ENGAGE);
   const [posts, users] = await Promise.all([listPosts(), listUsers()]);
   const nameById = new Map(users.map(u => [u.id, u.displayName]));
+
+  // Batch-resolve every post's attachments in a single lookup, keyed by id.
+  const allAttachmentIds = posts.flatMap(p => p.attachmentIds);
+  const attachments = await listAttachments(allAttachmentIds);
+  const attachmentById = new Map(attachments.map(a => [a.id, a]));
 
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
@@ -37,6 +45,7 @@ export default async function EngagePage() {
               // eslint-disable-next-line react/forbid-dom-props
               style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface-strong)', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' } as React.CSSProperties}
             />
+            <FileInput name="attachments" label="Image (optional)" accept="image/png,image/jpeg,image/webp" hint="PNG, JPG or WEBP" />
             <Button type="submit" className="self-start">Post</Button>
           </form>
         </GlassPanel>
@@ -51,6 +60,9 @@ export default async function EngagePage() {
 
       {posts.map(post => {
         const authorName = nameById.get(post.authorId) ?? 'Unknown';
+        const postAttachments = post.attachmentIds
+          .map(id => attachmentById.get(id))
+          .filter((a): a is NonNullable<typeof a> => a !== undefined);
         return (
           <GlassPanel key={post.id}>
             <div className="flex flex-col gap-3">
@@ -63,6 +75,9 @@ export default async function EngagePage() {
               {/* ---- Content ---- */}
               <h2 className="text-lg font-semibold">{post.title}</h2>
               <p className="text-sm whitespace-pre-line">{post.body}</p>
+
+              {/* ---- Attachments ---- */}
+              <AttachmentList attachments={postAttachments} />
 
               {/* ---- Reactions ---- */}
               <div className="flex flex-wrap gap-2 mt-1">

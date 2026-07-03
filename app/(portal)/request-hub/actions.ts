@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireSession } from '@/lib/auth';
 import { createRequest, withdrawRequest, REQUEST_TYPES } from '@/lib/db/requests';
+import { createAttachmentsFromFiles } from '@/lib/db/attachments';
 import { auditLog } from '@/lib/db/audit';
 
 // ============= SCHEMAS =============
@@ -24,12 +25,15 @@ export async function submitRequestAction(formData: FormData): Promise<void> {
     input.type === 'expense' && input.amount && input.amount.trim() !== ''
       ? Number(input.amount)
       : null;
+  const files = formData.getAll('attachments').filter((f): f is File => f instanceof File);
+  const ids = await createAttachmentsFromFiles(files, user.id, 'request', null);
   const created = await createRequest({
     userId: user.id,
     type: input.type,
     title: input.title,
     details: input.details,
     amount: amount !== null && Number.isFinite(amount) ? amount : null,
+    attachmentIds: ids,
   });
   await auditLog({
     actorId: user.id,

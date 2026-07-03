@@ -11,11 +11,13 @@ import {
   createTicket,
   addReply,
   setTicketStatus,
+  setTicketAttachments,
   getTicket,
   TICKET_CATEGORIES,
   TICKET_PRIORITIES,
   TICKET_STATUSES,
 } from '@/lib/db/helpdesk';
+import { createAttachmentsFromFiles } from '@/lib/db/attachments';
 import { auditLog } from '@/lib/db/audit';
 
 // ============= SCHEMAS =============
@@ -45,6 +47,9 @@ export async function createTicketAction(formData: FormData): Promise<void> {
     subject: input.subject,
     body: input.body,
   });
+  const files = formData.getAll('attachments').filter((f): f is File => f instanceof File);
+  const ids = await createAttachmentsFromFiles(files, user.id, 'helpdesk', created.id);
+  await setTicketAttachments(created.id, ids);
   await auditLog({
     actorId: user.id,
     action: 'helpdesk.create',
@@ -65,7 +70,9 @@ export async function addReplyAction(ticketId: string, formData: FormData): Prom
   if (!hasPermission(user, PERMISSIONS.EDIT_HELPDESK) && ticket.requesterId !== user.id) {
     throw new ForbiddenError('Cannot reply to this ticket');
   }
-  await addReply(ticketId, user.id, input.body);
+  const files = formData.getAll('attachments').filter((f): f is File => f instanceof File);
+  const ids = await createAttachmentsFromFiles(files, user.id, 'helpdesk', ticketId);
+  await addReply(ticketId, user.id, input.body, ids);
   await auditLog({ actorId: user.id, action: 'helpdesk.reply', target: ticketId });
   revalidatePath(`/helpdesk/${ticketId}`);
   revalidatePath('/helpdesk');

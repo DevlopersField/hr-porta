@@ -15,6 +15,20 @@ describe('createRequest', () => {
     expect(req.amount).toBeNull();
   });
 
+  it('defaults attachmentIds to [] when none provided', async () => {
+    const { createRequest } = await import('./requests');
+    const req = await createRequest({ userId: 'u1', type: 'general', title: 'X', details: 'Y' });
+    expect(req.attachmentIds).toEqual([]);
+  });
+
+  it('persists provided attachmentIds', async () => {
+    const { createRequest, getRequest } = await import('./requests');
+    const req = await createRequest({ userId: 'u1', type: 'general', title: 'X', details: 'Y', attachmentIds: ['att_a', 'att_b'] });
+    expect(req.attachmentIds).toEqual(['att_a', 'att_b']);
+    const after = await getRequest('u1', req.id);
+    expect(after?.attachmentIds).toEqual(['att_a', 'att_b']);
+  });
+
   it('retains amount only for expense type', async () => {
     const { createRequest } = await import('./requests');
     const exp = await createRequest({ userId: 'u1', type: 'expense', title: 'Taxi', details: 'Client visit', amount: 42.5 });

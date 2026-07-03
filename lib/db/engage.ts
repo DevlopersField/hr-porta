@@ -17,6 +17,7 @@ export const PostSchema = z.object({
   body: z.string(),
   createdAt: z.string(),
   reactions: z.record(z.string(), z.array(z.string())).default(() => ({})),
+  attachmentIds: z.array(z.string()).default([]),
 });
 export type Post = z.infer<typeof PostSchema>;
 
@@ -44,6 +45,7 @@ export type CreatePostInput = {
   authorId: string;
   title: string;
   body: string;
+  attachmentIds?: string[];
 };
 
 export async function createPost(input: CreatePostInput): Promise<Post> {
@@ -55,6 +57,7 @@ export async function createPost(input: CreatePostInput): Promise<Post> {
       body: input.body,
       createdAt: new Date().toISOString(),
       reactions: {},
+      attachmentIds: input.attachmentIds ?? [],
     };
     return { posts: [...current.posts, newPost] };
   });

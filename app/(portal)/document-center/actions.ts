@@ -1,0 +1,23 @@
+// app/(portal)/document-center/actions.ts
+
+// ============= IMPORTS =============
+'use server';
+import { revalidatePath } from 'next/cache';
+import { requireSession } from '@/lib/auth';
+import { PERMISSIONS } from '@/lib/permissions';
+import { createAttachmentsFromFiles } from '@/lib/db/attachments';
+import { auditLog } from '@/lib/db/audit';
+
+// ============= UPLOAD FILES =============
+export async function uploadDocumentFilesAction(formData: FormData): Promise<void> {
+  const user = await requireSession(PERMISSIONS.EDIT_DOCUMENTS);
+  const files = formData.getAll('attachments').filter((f): f is File => f instanceof File);
+  const ids = await createAttachmentsFromFiles(files, user.id, 'document-center', null);
+  await auditLog({
+    actorId: user.id,
+    action: 'document.upload',
+    target: 'document-center',
+    details: { count: ids.length, attachmentIds: ids },
+  });
+  revalidatePath('/document-center');
+}
