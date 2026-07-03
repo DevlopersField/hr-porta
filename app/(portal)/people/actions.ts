@@ -20,6 +20,7 @@ import {
 } from '@/lib/db/users';
 import { rebuildPeopleSearchIndex } from '@/lib/db/indexes';
 import { auditLog } from '@/lib/db/audit';
+import { setPasswordFlash } from '@/lib/flash';
 
 // ============= SCHEMAS =============
 const CreateUserSchema = z.object({
@@ -54,8 +55,10 @@ export async function createUserAction(formData: FormData): Promise<void> {
   });
   await rebuildPeopleSearchIndex();
   await auditLog({ actorId: actor.id, action: 'user.create', target: created.id, details: { email: input.email } });
+  // Show the temp password once via a short-lived HttpOnly cookie — never in the URL.
+  await setPasswordFlash({ kind: 'create', value: tempPassword });
   revalidatePath('/people');
-  redirect(`/people/${created.id}?newPassword=${encodeURIComponent(tempPassword)}`);
+  redirect(`/people/${created.id}`);
 }
 
 // ============= UPDATE PROFILE =============
@@ -97,15 +100,16 @@ export async function deactivateUserAction(userId: string): Promise<void> {
 }
 
 // ============= RESET PASSWORD =============
-export async function resetPasswordAction(userId: string): Promise<string> {
+export async function resetPasswordAction(userId: string): Promise<void> {
   const actor = await requireSession(PERMISSIONS.EDIT_USER_PROFILES);
   const tempPassword = crypto.randomBytes(12).toString('base64url');
   const passwordHash = await bcrypt.hash(tempPassword, 12);
   await setPasswordHash(userId, passwordHash, true);
   await setPasswordResetToken(userId, null);
   await auditLog({ actorId: actor.id, action: 'user.reset_password', target: userId });
+  // Show the new temp password once via cookie flash, not the URL.
+  await setPasswordFlash({ kind: 'reset', value: tempPassword });
   revalidatePath(`/people/${userId}`);
-  return tempPassword;
 }
 
 // Helper for the [userId]/page form

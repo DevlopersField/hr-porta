@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { getUserById, listUsers } from '@/lib/db/users';
 import { requireSession } from '@/lib/auth';
 import { canViewPeople, ForbiddenError, hasPermission, PERMISSIONS } from '@/lib/permissions';
+import { readPasswordFlash, clearPasswordFlash } from '@/lib/flash';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -19,20 +20,23 @@ import {
 // ============= PAGE =============
 export default async function UserPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ userId: string }>;
-  searchParams: Promise<{ newPassword?: string; resetPassword?: string }>;
 }) {
   const actor = await requireSession();
   if (!canViewPeople(actor)) {
     throw new ForbiddenError('You do not have permission to view people');
   }
   const { userId } = await params;
-  const { newPassword, resetPassword } = await searchParams;
+  const flash = await readPasswordFlash();
+  const newPassword = flash?.kind === 'create' ? flash.value : undefined;
+  const resetPassword = flash?.kind === 'reset' ? flash.value : undefined;
   const user = await getUserById(userId);
   if (!user) notFound();
   const allUsers = await listUsers();
+
+  // ============= DISMISS FLASH (clears the one-time cookie) =============
+  const dismissFlash = async () => { 'use server'; await clearPasswordFlash(); };
 
   const canEditProfile = hasPermission(actor, PERMISSIONS.EDIT_USER_PROFILES);
   const canManagePerms = hasPermission(actor, PERMISSIONS.MANAGE_PERMISSIONS);
@@ -42,12 +46,7 @@ export default async function UserPage({
   const profileAction = async (fd: FormData) => { 'use server'; await updateProfileAction(userId, fd); };
   const permAction    = async (fd: FormData) => { 'use server'; await updatePermissionsAction(userId, fd); };
   const deactivate    = async ()             => { 'use server'; await deactivateUserAction(userId); };
-  const resetPw       = async ()             => {
-    'use server';
-    const pw = await resetPasswordAction(userId);
-    const { redirect } = await import('next/navigation');
-    redirect(`/people/${userId}?resetPassword=${encodeURIComponent(pw)}`);
-  };
+  const resetPw       = async ()             => { 'use server'; await resetPasswordAction(userId); };
 
   return (
     <div className="flex flex-col gap-6">
@@ -56,20 +55,18 @@ export default async function UserPage({
         <p className="text-sm text-text-muted">{user.email} {user.active ? '' : '(inactive)'}</p>
       </div>
 
-      {newPassword && (
+      {(newPassword || resetPassword) && (
         // eslint-disable-next-line react/forbid-dom-props
         <GlassPanel variant="strong" className="border-l-4" style={{ borderLeftColor: '#10B981' } as React.CSSProperties}>
-          <p className="text-sm font-semibold">User created — temporary password:</p>
+          <p className="text-sm font-semibold">
+            {newPassword ? 'User created — temporary password:' : 'Password reset — new temporary password:'}
+          </p>
           {/* eslint-disable-next-line react/forbid-dom-props */}
-          <code style={{ fontSize: '14px', display: 'block', marginTop: '8px', background: 'var(--color-surface)', padding: '8px 12px', borderRadius: '8px' } as React.CSSProperties}>{newPassword}</code>
-          <p className="text-xs text-text-muted mt-2">Share this out-of-band. User must change on first login.</p>
-        </GlassPanel>
-      )}
-      {resetPassword && (
-        <GlassPanel variant="strong">
-          <p className="text-sm font-semibold">Password reset — new temporary password:</p>
-          {/* eslint-disable-next-line react/forbid-dom-props */}
-          <code style={{ fontSize: '14px', display: 'block', marginTop: '8px', background: 'var(--color-surface)', padding: '8px 12px', borderRadius: '8px' } as React.CSSProperties}>{resetPassword}</code>
+          <code style={{ fontSize: '14px', display: 'block', marginTop: '8px', background: 'var(--color-surface)', padding: '8px 12px', borderRadius: '8px' } as React.CSSProperties}>{newPassword ?? resetPassword}</code>
+          <div className="flex items-center justify-between mt-2 gap-3">
+            <p className="text-xs text-text-muted">Share this out-of-band. The user must change it on first login.</p>
+            <form action={dismissFlash}><Button type="submit" size="sm" variant="ghost">Dismiss</Button></form>
+          </div>
         </GlassPanel>
       )}
 

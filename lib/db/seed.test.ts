@@ -58,3 +58,28 @@ describe('seedIfEmpty', () => {
     expect(users[0]!.displayName).toBe('Bootstrap Admin');
   });
 });
+
+describe('seedDemoOrg', () => {
+  it('seeds a multi-team company with managers linked to reports, and is idempotent', async () => {
+    const { seedDemoOrg } = await import('./seed');
+    const { listUsers, getUserByEmail } = await import('./users');
+    await seedDemoOrg();
+    await seedDemoOrg(); // idempotent
+
+    const users = await listUsers();
+    expect(users.length).toBe(11);
+
+    const departments = new Set(users.map(u => u.department));
+    expect(departments).toEqual(new Set(['Engineering', 'Sales', 'HR']));
+
+    // A report is linked to its manager.
+    const sara = await getUserByEmail('sara.chen@acme.test');
+    const alex = await getUserByEmail('alex.rivera@acme.test');
+    expect(sara).not.toBeNull();
+    expect(alex!.managerId).toBe(sara!.id);
+
+    // Managers can approve leave; ICs cannot.
+    expect(sara!.permissions).toContain('approve_leave');
+    expect(alex!.permissions).toEqual([]);
+  });
+});

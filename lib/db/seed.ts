@@ -5,7 +5,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import bcrypt from 'bcrypt';
-import { createUser, listUsers } from './users';
+import { createUser, getUserByEmail, listUsers, type User } from './users';
+import { PERMISSIONS } from '../permissions';
+import { createLeaveRequest } from './leaves';
 import { logger } from '../logger';
 
 // ============= CONFIG =============
@@ -46,4 +48,88 @@ export async function seedIfEmpty(): Promise<void> {
     });
     logger.warn({ email, tempPassword }, 'BOOTSTRAP ADMIN CREATED — save this password, you must change it on first login');
   }
+
+  // Optionally seed a realistic demo company for multi-user/team testing.
+  if (process.env.SEED_DEMO === 'true') {
+    await seedDemoOrg();
+  }
+}
+
+// ============= DEMO ORG =============
+// Idempotent: keyed off a sentinel demo email. All demo users share one password
+// (env DEMO_PASSWORD or 'Password123!') and can log in directly (no forced change),
+// so you can exercise team-vs-admin views immediately.
+const MANAGER_PERMS = [
+  PERMISSIONS.APPROVE_LEAVE,
+  PERMISSIONS.APPROVE_REQUESTS,
+  PERMISSIONS.VIEW_TEAM_LEAVE,
+  PERMISSIONS.VIEW_TEAM_ATTENDANCE,
+];
+const HR_PERMS = [
+  PERMISSIONS.VIEW_ALL_PEOPLE,
+  PERMISSIONS.EDIT_USER_PROFILES,
+  PERMISSIONS.CREATE_USERS,
+  PERMISSIONS.VIEW_ALL_LEAVE,
+  PERMISSIONS.APPROVE_LEAVE,
+  PERMISSIONS.APPROVE_REQUESTS,
+];
+
+export async function seedDemoOrg(): Promise<void> {
+  const SENTINEL = 'sara.chen@acme.test';
+  if (await getUserByEmail(SENTINEL)) return; // already seeded
+
+  const password = process.env.DEMO_PASSWORD ?? 'Password123!';
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  const mk = (
+    email: string,
+    displayName: string,
+    department: string,
+    jobTitle: string,
+    managerId: string | null,
+    permissions: string[] = [],
+  ): Promise<User> =>
+    createUser({ email, passwordHash, displayName, department, jobTitle, managerId, permissions, mustChangePassword: false });
+
+  // Managers / leads first (reports reference their ids).
+  const sara = await mk(SENTINEL, 'Sara Chen', 'Engineering', 'Engineering Manager', null, MANAGER_PERMS);
+  const tom = await mk('tom.becker@acme.test', 'Tom Becker', 'Sales', 'Sales Manager', null, MANAGER_PERMS);
+  const grace = await mk('grace.kim@acme.test', 'Grace Kim', 'HR', 'HR Generalist', null, HR_PERMS);
+
+  // Individual contributors.
+  const eng = [
+    ['alex.rivera@acme.test', 'Alex Rivera', 'Software Engineer'],
+    ['priya.patel@acme.test', 'Priya Patel', 'Senior Software Engineer'],
+    ['diego.santos@acme.test', 'Diego Santos', 'Frontend Engineer'],
+    ['mei.lin@acme.test', 'Mei Lin', 'QA Engineer'],
+  ] as const;
+  const sales = [
+    ['jordan.blake@acme.test', 'Jordan Blake', 'Account Executive'],
+    ['nina.rossi@acme.test', 'Nina Rossi', 'Sales Development Rep'],
+    ['omar.haddad@acme.test', 'Omar Haddad', 'Account Executive'],
+  ] as const;
+
+  const engUsers: User[] = [];
+  for (const [email, name, title] of eng) engUsers.push(await mk(email, name, 'Engineering', title, sara.id));
+  for (const [email, name, title] of sales) await mk(email, name, 'Sales', title, tom.id);
+  await mk('liam.wong@acme.test', 'Liam Wong', 'HR', 'Recruiter', grace.id);
+
+  // A little sample leave so the approvals inbox isn't empty.
+  const year = new Date().getUTCFullYear();
+  if (engUsers[0]) {
+    await createLeaveRequest({
+      userId: engUsers[0].id, type: 'annual',
+      startDate: `${year}-08-10`, endDate: `${year}-08-14`, days: 5,
+      reason: 'Family holiday',
+    });
+  }
+  if (engUsers[1]) {
+    await createLeaveRequest({
+      userId: engUsers[1].id, type: 'sick',
+      startDate: `${year}-07-21`, endDate: `${year}-07-22`, days: 2,
+      reason: 'Medical appointment',
+    });
+  }
+
+  logger.warn({ password, users: 11 }, 'DEMO ORG SEEDED — log in as any *@acme.test with this password');
 }

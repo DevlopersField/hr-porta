@@ -4,6 +4,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { auth } from '@/lib/auth';
+import { getUserById } from '@/lib/db/users';
 import { getSettings } from '@/lib/db/settings';
 import { resolveTheme } from '@/lib/theme';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -14,6 +15,11 @@ import { PortalShell } from '@/components/layout/PortalShell';
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user) redirect('/login');
+
+  // ============= FORCE PASSWORD CHANGE ON FIRST LOGIN =============
+  const dbUser = await getUserById(session.user.id);
+  if (dbUser?.mustChangePassword) redirect('/change-password');
+
   const settings = await getSettings();
 
   // ============= RESOLVE THEME (for the toggle's current value) =============
