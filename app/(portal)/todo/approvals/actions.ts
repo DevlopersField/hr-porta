@@ -8,6 +8,7 @@ import { requireSession } from '@/lib/auth';
 import { PERMISSIONS } from '@/lib/permissions';
 import { decideRequest } from '@/lib/db/requests';
 import { auditLog } from '@/lib/db/audit';
+import { setNoticeFlash } from '@/lib/flash';
 
 // ============= SCHEMAS =============
 const DecisionSchema = z.object({
@@ -31,5 +32,6 @@ export async function decideRequestAction(formData: FormData): Promise<void> {
     target: input.requestId,
     details: { userId: input.userId, note: input.note },
   });
+  await setNoticeFlash('Decision saved');
   revalidatePath('/todo/approvals');
 }

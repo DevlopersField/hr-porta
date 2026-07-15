@@ -9,6 +9,7 @@ import { upsertProfile } from '@/lib/db/profiles';
 import { updateUserProfile } from '@/lib/db/users';
 import { saveUploadedImage } from '@/lib/uploads';
 import { auditLog } from '@/lib/db/audit';
+import { setNoticeFlash } from '@/lib/flash';
 
 // ============= SCHEMAS =============
 const ProfileFormSchema = z.object({
@@ -33,7 +34,21 @@ export async function updateMyProfileAction(formData: FormData): Promise<void> {
     target: user.id,
     details: { fields: Object.keys(input) },
   });
+  await setNoticeFlash('Profile saved');
   revalidatePath('/my-worklife/profile');
+}
+
+// ============= UPDATE DISPLAY NAME =============
+const NameSchema = z.object({ displayName: z.string().min(1).max(120) });
+
+export async function updateMyNameAction(formData: FormData): Promise<void> {
+  const user = await requireSession();
+  const input = NameSchema.parse(Object.fromEntries(formData));
+  await updateUserProfile(user.id, { displayName: input.displayName.trim() });
+  await auditLog({ actorId: user.id, action: 'profile.rename', target: user.id });
+  await setNoticeFlash('Name updated');
+  // Layout re-renders the shell, so the top bar picks up the new name at once.
+  revalidatePath('/', 'layout');
 }
 
 // ============= UPDATE AVATAR =============
@@ -49,5 +64,6 @@ export async function updateMyAvatarAction(formData: FormData): Promise<void> {
     target: user.id,
     details: { filename: result.filename },
   });
+  await setNoticeFlash('Photo updated');
   revalidatePath('/my-worklife/profile');
 }

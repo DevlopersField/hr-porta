@@ -19,6 +19,10 @@ export default async function HomePage() {
     listUserLeaves(userId),
   ]);
 
+  // Greet with the fresh db name, not the JWT's login-time snapshot.
+  const me = users.find(u => u.id === userId);
+  const greetName = me?.displayName ?? session!.user.name;
+
   const activeCount = users.filter(u => u.active).length;
   const year = String(new Date().getUTCFullYear());
   const myApprovedThisYear = myLeaves.filter(l => l.status === 'approved' && l.startDate.startsWith(year)).length;
@@ -46,7 +50,7 @@ export default async function HomePage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-semibold">Welcome, {session!.user.name}</h1>
+        <h1 className="text-3xl font-semibold">Welcome, {greetName}</h1>
         <p className="text-sm text-text-muted mt-1">Plan, prioritize, and accomplish your work with ease.</p>
       </div>
 

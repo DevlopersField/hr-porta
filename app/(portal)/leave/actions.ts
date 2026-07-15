@@ -15,6 +15,7 @@ import {
   LEAVE_TYPES,
 } from '@/lib/db/leaves';
 import { auditLog } from '@/lib/db/audit';
+import { setNoticeFlash } from '@/lib/flash';
 
 // ============= SCHEMAS =============
 const RequestSchema = z.object({
@@ -38,6 +39,7 @@ export async function submitLeaveAction(formData: FormData): Promise<void> {
     reason: input.reason,
   });
   await auditLog({ actorId: user.id, action: 'leave.submit', target: created.id, details: { ...input, days } });
+  await setNoticeFlash('Leave request submitted');
   revalidatePath('/leave/balance');
   redirect('/leave/balance');
 }
@@ -47,6 +49,7 @@ export async function withdrawLeaveAction(requestId: string): Promise<void> {
   const user = await requireSession();
   await withdrawLeaveRequest(user.id, requestId);
   await auditLog({ actorId: user.id, action: 'leave.withdraw', target: requestId });
+  await setNoticeFlash('Request withdrawn');
   revalidatePath('/leave/balance');
 }
 
@@ -66,5 +69,6 @@ export async function decideLeaveAction(formData: FormData): Promise<void> {
   }
   await decideLeaveRequest(input.userId, input.requestId, input.decision, approver.id, input.note);
   await auditLog({ actorId: approver.id, action: `leave.${input.decision}`, target: input.requestId, details: { userId: input.userId, note: input.note } });
+  await setNoticeFlash('Decision saved');
   revalidatePath('/leave/approvals');
 }

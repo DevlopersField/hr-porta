@@ -45,3 +45,25 @@ export async function clearPasswordFlash(): Promise<void> {
   const store = await cookies();
   store.delete(PW_FLASH);
 }
+
+// ============= SAVE NOTICE (toast) =============
+// A few-second flash shown as a toast after a successful save. Self-expires
+// (render can't delete cookies), so a quick refresh may re-show it briefly.
+const NOTICE_FLASH = 'hrp_notice';
+const NOTICE_MAX_AGE_SECONDS = 4;
+
+export async function setNoticeFlash(message: string): Promise<void> {
+  const store = await cookies();
+  store.set(NOTICE_FLASH, message.slice(0, 120), {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: NOTICE_MAX_AGE_SECONDS,
+    path: '/',
+  });
+}
+
+export async function readNoticeFlash(): Promise<string | null> {
+  const store = await cookies();
+  return store.get(NOTICE_FLASH)?.value ?? null;
+}

@@ -8,6 +8,7 @@ import { requireSession } from '@/lib/auth';
 import { PERMISSIONS } from '@/lib/permissions';
 import { addDelegation, removeDelegation, listMyDelegations } from '@/lib/db/delegates';
 import { auditLog } from '@/lib/db/audit';
+import { setNoticeFlash } from '@/lib/flash';
 
 // ============= SCHEMAS =============
 const AddSchema = z.object({
@@ -38,6 +39,7 @@ export async function addDelegationAction(formData: FormData): Promise<void> {
     target: created.id,
     details: { toUserId: input.toUserId, startDate: input.startDate, endDate: input.endDate },
   });
+  await setNoticeFlash('Delegation saved');
   revalidatePath('/workflow-delegates');
 }
 
@@ -51,5 +53,6 @@ export async function removeDelegationAction(delegationId: string): Promise<void
   }
   await removeDelegation(delegationId);
   await auditLog({ actorId: user.id, action: 'delegate.remove', target: delegationId });
+  await setNoticeFlash('Delegation removed');
   revalidatePath('/workflow-delegates');
 }

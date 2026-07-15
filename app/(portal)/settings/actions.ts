@@ -10,6 +10,7 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { saveSettings, type Settings } from '@/lib/db/settings';
 import { saveUploadedImage } from '@/lib/uploads';
 import { auditLog } from '@/lib/db/audit';
+import { setNoticeFlash } from '@/lib/flash';
 
 // ============= SCHEMAS =============
 const AppearanceSchema = z.object({
@@ -63,6 +64,7 @@ export async function updateSettingsSection(
   }
   await saveSettings(patch, user.id);
   await auditLog({ actorId: user.id, action: `settings.${section}.update`, details: raw });
+  await setNoticeFlash('Settings saved');
   revalidatePath('/', 'layout');
 }
 
@@ -97,5 +99,6 @@ export async function clearBrandingImage(purpose: 'logo' | 'favicon' | 'hero'): 
     'loginHeroPath';
   await saveSettings({ branding: { [fieldName]: null } as any }, user.id);
   await auditLog({ actorId: user.id, action: `settings.clear.${purpose}` });
+  await setNoticeFlash('Image removed');
   revalidatePath('/', 'layout');
 }

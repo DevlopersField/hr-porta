@@ -18,6 +18,7 @@ import {
 } from '@/lib/db/helpdesk';
 import { createAttachmentsFromFiles, setAttachmentsRecord, getUploadedFiles } from '@/lib/db/attachments';
 import { auditLog } from '@/lib/db/audit';
+import { setNoticeFlash } from '@/lib/flash';
 
 // ============= SCHEMAS =============
 const CreateSchema = z.object({
@@ -57,6 +58,7 @@ export async function createTicketAction(formData: FormData): Promise<void> {
     target: created.id,
     details: { category: input.category, priority: input.priority, subject: input.subject, attachmentIds: ids },
   });
+  await setNoticeFlash('Ticket created');
   revalidatePath('/helpdesk');
   redirect(`/helpdesk/${created.id}`);
 }
@@ -74,6 +76,7 @@ export async function addReplyAction(ticketId: string, formData: FormData): Prom
   const ids = await createAttachmentsFromFiles(getUploadedFiles(formData), user.id, 'helpdesk', ticketId);
   await addReply(ticketId, user.id, input.body, ids);
   await auditLog({ actorId: user.id, action: 'helpdesk.reply', target: ticketId, details: { attachmentIds: ids } });
+  await setNoticeFlash('Reply sent');
   revalidatePath(`/helpdesk/${ticketId}`);
   revalidatePath('/helpdesk');
 }
@@ -84,6 +87,7 @@ export async function setStatusAction(ticketId: string, formData: FormData): Pro
   const input = StatusSchema.parse(Object.fromEntries(formData));
   await setTicketStatus(ticketId, input.status);
   await auditLog({ actorId: user.id, action: 'helpdesk.status', target: ticketId, details: { status: input.status } });
+  await setNoticeFlash('Status updated');
   revalidatePath(`/helpdesk/${ticketId}`);
   revalidatePath('/helpdesk');
 }

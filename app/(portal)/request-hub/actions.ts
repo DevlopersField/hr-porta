@@ -8,6 +8,7 @@ import { requireSession } from '@/lib/auth';
 import { createRequest, withdrawRequest, REQUEST_TYPES } from '@/lib/db/requests';
 import { createAttachmentsFromFiles, setAttachmentsRecord, getUploadedFiles } from '@/lib/db/attachments';
 import { auditLog } from '@/lib/db/audit';
+import { setNoticeFlash } from '@/lib/flash';
 
 // ============= SCHEMAS =============
 const SubmitSchema = z.object({
@@ -42,6 +43,7 @@ export async function submitRequestAction(formData: FormData): Promise<void> {
     target: created.id,
     details: { type: input.type, title: input.title, attachmentIds: ids },
   });
+  await setNoticeFlash('Request submitted');
   revalidatePath('/request-hub');
 }
 
@@ -50,5 +52,6 @@ export async function withdrawRequestAction(requestId: string): Promise<void> {
   const user = await requireSession();
   await withdrawRequest(user.id, requestId);
   await auditLog({ actorId: user.id, action: 'request.withdraw', target: requestId });
+  await setNoticeFlash('Request withdrawn');
   revalidatePath('/request-hub');
 }

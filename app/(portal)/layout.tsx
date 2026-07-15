@@ -10,6 +10,8 @@ import { resolveTheme } from '@/lib/theme';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { TopBar } from '@/components/layout/TopBar';
 import { PortalShell } from '@/components/layout/PortalShell';
+import { Toast } from '@/components/ui/Toast';
+import { readNoticeFlash } from '@/lib/flash';
 
 // ============= LAYOUT =============
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
@@ -21,6 +23,11 @@ export default async function PortalLayout({ children }: { children: React.React
   if (dbUser?.mustChangePassword) redirect('/change-password');
 
   const settings = await getSettings();
+  const notice = await readNoticeFlash();
+
+  // The JWT carries a login-time snapshot; read the name fresh from the db so
+  // profile edits show up in the shell immediately (no re-login needed).
+  const shellUser = { ...session.user, name: dbUser?.displayName ?? session.user.name };
 
   // ============= RESOLVE THEME (for the toggle's current value) =============
   const cookieStore = await cookies();
@@ -35,14 +42,15 @@ export default async function PortalLayout({ children }: { children: React.React
     <PortalShell
       sidebar={
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        <Sidebar user={session.user as any} settings={settings} />
+        <Sidebar user={shellUser as any} settings={settings} />
       }
       topbar={
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        <TopBar user={session.user as any} themeIntent={intent} />
+        <TopBar user={shellUser as any} themeIntent={intent} />
       }
     >
       {children}
+      <Toast message={notice} />
     </PortalShell>
   );
 }

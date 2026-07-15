@@ -7,6 +7,7 @@ import { requireSession } from '@/lib/auth';
 import { PERMISSIONS } from '@/lib/permissions';
 import { createAttachmentsFromFiles, getUploadedFiles } from '@/lib/db/attachments';
 import { auditLog } from '@/lib/db/audit';
+import { setNoticeFlash } from '@/lib/flash';
 
 // ============= UPLOAD FILES =============
 export async function uploadDocumentFilesAction(formData: FormData): Promise<void> {
@@ -18,5 +19,6 @@ export async function uploadDocumentFilesAction(formData: FormData): Promise<voi
     target: 'document-center',
     details: { count: ids.length, attachmentIds: ids },
   });
+  await setNoticeFlash('Files uploaded');
   revalidatePath('/document-center');
 }

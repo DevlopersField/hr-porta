@@ -7,7 +7,7 @@ import { getProfile } from '@/lib/db/profiles';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { updateMyProfileAction, updateMyAvatarAction } from './actions';
+import { updateMyProfileAction, updateMyAvatarAction, updateMyNameAction } from './actions';
 
 // ============= HELPERS =============
 function initialsOf(name: string): string {
@@ -98,12 +98,21 @@ export default async function ProfilePage() {
         </form>
       </GlassPanel>
 
+      {/* ============= DISPLAY NAME (EDITABLE) ============= */}
+      <GlassPanel>
+        <h2 className="text-lg font-semibold">Display name</h2>
+        <p className="text-sm text-text-muted mt-1">Shown across the portal (top bar, approvals, posts).</p>
+        <form action={updateMyNameAction} className="flex flex-wrap items-end gap-3 mt-4">
+          <Input name="displayName" label="" defaultValue={displayName} maxLength={120} required />
+          <Button type="submit">Save name</Button>
+        </form>
+      </GlassPanel>
+
       {/* ============= JOB DETAILS (READ-ONLY) ============= */}
       <GlassPanel>
         <h2 className="text-lg font-semibold">Job details</h2>
         <p className="text-sm text-text-muted mt-1">Managed by HR. Contact them to make changes.</p>
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-          <ReadOnlyField label="Full name" value={displayName} />
           <ReadOnlyField label="Email" value={me?.email ?? session.email ?? '—'} />
           <ReadOnlyField label="Job title" value={jobTitle || '—'} />
           <ReadOnlyField label="Department" value={department || '—'} />

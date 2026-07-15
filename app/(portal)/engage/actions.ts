@@ -9,6 +9,7 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { createPost, toggleReaction, ALLOWED_EMOJIS } from '@/lib/db/engage';
 import { createAttachmentsFromFiles, setAttachmentsRecord, getUploadedFiles } from '@/lib/db/attachments';
 import { auditLog } from '@/lib/db/audit';
+import { setNoticeFlash } from '@/lib/flash';
 
 // ============= SCHEMAS =============
 const CreatePostSchema = z.object({
@@ -29,6 +30,7 @@ export async function createPostAction(formData: FormData): Promise<void> {
   const created = await createPost({ authorId: user.id, title: input.title, body: input.body, attachmentIds: ids });
   await setAttachmentsRecord(ids, created.id);
   await auditLog({ actorId: user.id, action: 'engage.post', target: created.id, details: { title: input.title, attachmentIds: ids } });
+  await setNoticeFlash('Posted');
   revalidatePath('/engage');
 }
 

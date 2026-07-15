@@ -20,7 +20,7 @@ import {
 } from '@/lib/db/users';
 import { rebuildPeopleSearchIndex } from '@/lib/db/indexes';
 import { auditLog } from '@/lib/db/audit';
-import { setPasswordFlash } from '@/lib/flash';
+import { setPasswordFlash, setNoticeFlash } from '@/lib/flash';
 import { sendUserInviteEmail } from '@/lib/email';
 
 // ============= SCHEMAS =============
@@ -76,6 +76,7 @@ export async function updateProfileAction(userId: string, formData: FormData): P
   });
   await rebuildPeopleSearchIndex();
   await auditLog({ actorId: actor.id, action: 'user.update_profile', target: userId, details: input });
+  await setNoticeFlash('Profile saved');
   revalidatePath(`/people/${userId}`);
 }
 
@@ -88,6 +89,7 @@ export async function updatePermissionsAction(userId: string, formData: FormData
   const validated = mergeSubmittedPermissions(target.permissions, submitted);
   await updateUserPermissions(userId, validated);
   await auditLog({ actorId: actor.id, action: 'user.update_permissions', target: userId, details: { permissions: validated } });
+  await setNoticeFlash('Permissions saved');
   revalidatePath(`/people/${userId}`);
 }
 
@@ -98,6 +100,7 @@ export async function deactivateUserAction(userId: string): Promise<void> {
   await deactivateUser(userId);
   await rebuildPeopleSearchIndex();
   await auditLog({ actorId: actor.id, action: 'user.deactivate', target: userId });
+  await setNoticeFlash('User deactivated');
   revalidatePath('/people');
   revalidatePath(`/people/${userId}`);
 }

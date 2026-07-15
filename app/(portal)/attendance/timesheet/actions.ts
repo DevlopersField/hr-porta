@@ -10,6 +10,7 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { addTimesheetEntry, updateTimesheetEntry, deleteTimesheetEntry, parseHoursInput } from '@/lib/db/timesheets';
 import { createProject, setProjectActive, addProjectTask } from '@/lib/db/projects';
 import { auditLog } from '@/lib/db/audit';
+import { setNoticeFlash } from '@/lib/flash';
 
 // ============= SCHEMAS =============
 // hours arrives as "5:30" or "7.5" — parsed by parseHoursInput after Zod.
@@ -58,6 +59,7 @@ export async function addTimesheetEntryAction(formData: FormData): Promise<void>
     target: entry.id,
     details: { projectId, taskId, date: input.date, hours },
   });
+  await setNoticeFlash('Time logged');
   revalidatePath('/attendance/timesheet');
 }
 
@@ -80,6 +82,7 @@ export async function updateTimesheetEntryAction(entryId: string, formData: Form
     target: entryId,
     details: { projectId, taskId, date: input.date, hours },
   });
+  await setNoticeFlash('Entry updated');
   revalidatePath('/attendance/timesheet');
   redirect('/attendance/timesheet');
 }
@@ -89,6 +92,7 @@ export async function deleteTimesheetEntryAction(entryId: string): Promise<void>
   const user = await requireSession();
   await deleteTimesheetEntry(user.id, entryId);
   await auditLog({ actorId: user.id, action: 'timesheet.delete', target: entryId });
+  await setNoticeFlash('Entry deleted');
   revalidatePath('/attendance/timesheet');
 }
 
@@ -108,6 +112,7 @@ export async function createProjectAction(formData: FormData): Promise<void> {
     target: project.id,
     details: { name: project.name, tasks: project.tasks.map(t => t.name) },
   });
+  await setNoticeFlash('Project created');
   revalidatePath('/attendance/timesheet');
 }
 
@@ -116,6 +121,7 @@ export async function addProjectTaskAction(projectId: string, formData: FormData
   const input = AddTaskSchema.parse(Object.fromEntries(formData));
   const task = await addProjectTask(projectId, input.taskName);
   await auditLog({ actorId: user.id, action: 'project.add_task', target: projectId, details: { taskId: task.id, name: task.name } });
+  await setNoticeFlash('Task added');
   revalidatePath('/attendance/timesheet');
 }
 
@@ -123,5 +129,6 @@ export async function setProjectActiveAction(projectId: string, active: boolean)
   const user = await requireSession(PERMISSIONS.MANAGE_PROJECTS);
   await setProjectActive(projectId, active);
   await auditLog({ actorId: user.id, action: active ? 'project.restore' : 'project.archive', target: projectId });
+  await setNoticeFlash('Project updated');
   revalidatePath('/attendance/timesheet');
 }

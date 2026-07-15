@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { requireSession } from '@/lib/auth';
 import { createTask, toggleTask, deleteTask } from '@/lib/db/tasks';
 import { auditLog } from '@/lib/db/audit';
+import { setNoticeFlash } from '@/lib/flash';
 
 // ============= SCHEMAS =============
 const AddSchema = z.object({
@@ -24,6 +25,7 @@ export async function addTaskAction(formData: FormData): Promise<void> {
     dueDate: input.dueDate && input.dueDate !== '' ? input.dueDate : null,
   });
   await auditLog({ actorId: user.id, action: 'task.add', target: created.id });
+  await setNoticeFlash('Task added');
   revalidatePath('/todo/tasks');
 }
 
@@ -32,6 +34,7 @@ export async function toggleTaskAction(taskId: string): Promise<void> {
   const user = await requireSession();
   await toggleTask(user.id, taskId);
   await auditLog({ actorId: user.id, action: 'task.toggle', target: taskId });
+  await setNoticeFlash('Task updated');
   revalidatePath('/todo/tasks');
 }
 
@@ -40,5 +43,6 @@ export async function deleteTaskAction(taskId: string): Promise<void> {
   const user = await requireSession();
   await deleteTask(user.id, taskId);
   await auditLog({ actorId: user.id, action: 'task.delete', target: taskId });
+  await setNoticeFlash('Task deleted');
   revalidatePath('/todo/tasks');
 }
