@@ -43,6 +43,37 @@ describe('listProjects', () => {
   });
 });
 
+describe('addProjectTask', () => {
+  it('adds a named task inside a project', async () => {
+    const { createProject, addProjectTask, getProject } = await import('./projects');
+    const p = await createProject({ name: 'Website Redesign' });
+    const task = await addProjectTask(p.id, 'Design mockups');
+    expect(task.id).toMatch(/^ptk_/);
+    const after = await getProject(p.id);
+    expect(after?.tasks.map(t => t.name)).toEqual(['Design mockups']);
+  });
+
+  it('rejects duplicate task names within the same project (case-insensitive)', async () => {
+    const { createProject, addProjectTask } = await import('./projects');
+    const p = await createProject({ name: 'App' });
+    await addProjectTask(p.id, 'QA');
+    await expect(addProjectTask(p.id, 'qa')).rejects.toThrow(/already exists/i);
+  });
+
+  it('rejects an empty task name and a missing project', async () => {
+    const { createProject, addProjectTask } = await import('./projects');
+    const p = await createProject({ name: 'X' });
+    await expect(addProjectTask(p.id, '  ')).rejects.toThrow(/name/i);
+    await expect(addProjectTask('prj_missing', 'T')).rejects.toThrow(/not found/i);
+  });
+
+  it('existing projects without tasks parse with an empty task list', async () => {
+    const { createProject, getProject } = await import('./projects');
+    const p = await createProject({ name: 'Legacy' });
+    expect((await getProject(p.id))?.tasks).toEqual([]);
+  });
+});
+
 describe('setProjectActive', () => {
   it('archives and restores a project', async () => {
     const { createProject, setProjectActive, getProject } = await import('./projects');

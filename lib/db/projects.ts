@@ -8,11 +8,20 @@ import crypto from 'node:crypto';
 import { readJson, updateJson } from './core';
 
 // ============= SCHEMA =============
+export const ProjectTaskSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+export type ProjectTask = z.infer<typeof ProjectTaskSchema>;
+
 export const ProjectSchema = z.object({
   id: z.string(),
   name: z.string(),
   code: z.string().nullable().default(null),
   active: z.boolean().default(true),
+  // Tasks scope time entries within a project; entries without a task fall
+  // under the implicit "Other" bucket (taskId null).
+  tasks: z.array(ProjectTaskSchema).default([]),
   createdAt: z.string(),
 });
 export type Project = z.infer<typeof ProjectSchema>;
@@ -51,6 +60,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     name,
     code: input.code?.trim() || null,
     active: true,
+    tasks: [],
     createdAt: new Date().toISOString(),
   };
   await updateJson(PATH, ProjectsFileSchema, EMPTY, (current) => {
@@ -60,6 +70,28 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     return { projects: [...current.projects, project] };
   });
   return project;
+}
+
+export async function addProjectTask(projectId: string, taskName: string): Promise<ProjectTask> {
+  const name = taskName.trim();
+  if (!name) throw new Error('Task name is required');
+  const task: ProjectTask = {
+    id: `ptk_${crypto.randomBytes(6).toString('hex')}`,
+    name,
+  };
+  await updateJson(PATH, ProjectsFileSchema, EMPTY, (current) => {
+    const target = current.projects.find(p => p.id === projectId);
+    if (!target) throw new Error('Project not found');
+    if (target.tasks.some(t => t.name.toLowerCase() === name.toLowerCase())) {
+      throw new Error(`Task "${name}" already exists in this project`);
+    }
+    return {
+      projects: current.projects.map(p =>
+        p.id === projectId ? { ...p, tasks: [...p.tasks, task] } : p,
+      ),
+    };
+  });
+  return task;
 }
 
 export async function setProjectActive(id: string, active: boolean): Promise<void> {

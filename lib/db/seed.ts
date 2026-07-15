@@ -8,7 +8,7 @@ import bcrypt from 'bcrypt';
 import { createUser, getUserByEmail, listUsers, type User } from './users';
 import { PERMISSIONS } from '../permissions';
 import { createLeaveRequest } from './leaves';
-import { listProjects, createProject } from './projects';
+import { listProjects, createProject, addProjectTask } from './projects';
 import { logger } from '../logger';
 
 // ============= CONFIG =============
@@ -115,10 +115,15 @@ export async function seedDemoOrg(): Promise<void> {
   for (const [email, name, title] of sales) await mk(email, name, 'Sales', title, tom.id);
   await mk('liam.wong@acme.test', 'Liam Wong', 'HR', 'Recruiter', grace.id);
 
-  // Starter projects so the timesheet is usable out of the box.
+  // Starter projects (with tasks) so the timesheet is usable out of the box.
   if ((await listProjects()).length === 0) {
-    await createProject({ name: 'Website Redesign', code: 'WEB' });
-    await createProject({ name: 'Mobile App', code: 'APP' });
+    const web = await createProject({ name: 'Website Redesign', code: 'WEB' });
+    await addProjectTask(web.id, 'Design');
+    await addProjectTask(web.id, 'Development');
+    await addProjectTask(web.id, 'QA');
+    const app = await createProject({ name: 'Mobile App', code: 'APP' });
+    await addProjectTask(app.id, 'Development');
+    await addProjectTask(app.id, 'Testing');
     await createProject({ name: 'Internal Tools', code: 'INT' });
     await createProject({ name: 'Customer Onboarding', code: 'ONB' });
   }
