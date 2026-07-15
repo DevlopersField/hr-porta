@@ -21,6 +21,7 @@ import {
 import { rebuildPeopleSearchIndex } from '@/lib/db/indexes';
 import { auditLog } from '@/lib/db/audit';
 import { setPasswordFlash } from '@/lib/flash';
+import { sendUserInviteEmail } from '@/lib/email';
 
 // ============= SCHEMAS =============
 const CreateUserSchema = z.object({
@@ -55,6 +56,8 @@ export async function createUserAction(formData: FormData): Promise<void> {
   });
   await rebuildPeopleSearchIndex();
   await auditLog({ actorId: actor.id, action: 'user.create', target: created.id, details: { email: input.email } });
+  // Emails the invite when SMTP is configured; logged no-op otherwise.
+  await sendUserInviteEmail({ to: input.email, displayName: input.displayName, tempPassword, kind: 'invite' });
   // Show the temp password once via a short-lived HttpOnly cookie — never in the URL.
   await setPasswordFlash({ kind: 'create', value: tempPassword });
   revalidatePath('/people');
@@ -107,6 +110,10 @@ export async function resetPasswordAction(userId: string): Promise<void> {
   await setPasswordHash(userId, passwordHash, true);
   await setPasswordResetToken(userId, null);
   await auditLog({ actorId: actor.id, action: 'user.reset_password', target: userId });
+  const target = await getUserById(userId);
+  if (target) {
+    await sendUserInviteEmail({ to: target.email, displayName: target.displayName, tempPassword, kind: 'reset' });
+  }
   // Show the new temp password once via cookie flash, not the URL.
   await setPasswordFlash({ kind: 'reset', value: tempPassword });
   revalidatePath(`/people/${userId}`);
