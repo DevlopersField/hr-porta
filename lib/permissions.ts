@@ -12,10 +12,11 @@ export const PERMISSIONS = {
   APPROVE_LEAVE: 'approve_leave',
   VIEW_TEAM_LEAVE: 'view_team_leave',
   VIEW_ALL_LEAVE: 'view_all_leave',
-  // Attendance
+  // Attendance & timesheet
   VIEW_TEAM_ATTENDANCE: 'view_team_attendance',
   VIEW_ALL_ATTENDANCE: 'view_all_attendance',
   EDIT_ATTENDANCE_RECORDS: 'edit_attendance_records',
+  MANAGE_PROJECTS: 'manage_projects',
   // Salary
   VIEW_ALL_SALARY: 'view_all_salary',
   EDIT_SALARY: 'edit_salary',

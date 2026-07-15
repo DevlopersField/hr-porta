@@ -3,6 +3,11 @@
 > **Last updated:** 2026-07-03 · all 7 previously-deferred modules now shipped
 > Read this first. It's a load-bearing summary so you can continue work without re-discovering everything.
 
+> **2026-07-15:** Attachment security hardening (public/private upload split, scoped
+> request-attachment access, nosniff, upload-first ordering) + project timesheet
+> (projects registry, manual per-project hour logging, `MANAGE_PROJECTS` permission).
+> Test count now **201**. `tsc --noEmit`, `vitest run`, `next build` all clean.
+
 > **2026-07-03 buildout:** Every nav route that used to 404 is now a working module
 > (Profile, Engage, To-do/Tasks, To-do/Approvals, Request Hub, Workflow Delegates,
 > Helpdesk, Salary, Goals, Reviews). Plus Phase-0 foundation: demo-org seed
@@ -66,7 +71,9 @@ A proper fix is to run `pnpm approve-builds` once and commit the result. Hasn't 
 | People | `/people`, `/people/[id]`, `/people/new` | `data/users.json`, custom per-user permissions, StatusPill on Active/Inactive |
 | Settings | `/settings/{appearance,branding,layout,locale}` | `data/settings.json`, live theme customisation, image uploads |
 | Leave | `/leave/{balance,request,approvals}` | `data/leaves/{userId}.json`, 4 types, status pills, self-approval blocked |
-| Attendance | `/attendance/{clock,timesheet}` | `data/attendance/{userId}.json`, single open day, Open/Closed status pills |
+| Attendance | `/attendance/clock` | `data/attendance/{userId}.json`, single open day, Open/Closed status pills |
+| Timesheet | `/attendance/timesheet` | `data/timesheets/{userId}.json` + `data/projects.json`; manual per-project hours (select project + date + hours + note), per-project month totals, 24h/day cap, `MANAGE_PROJECTS` admins create/archive projects inline |
+| Attachments | (embedded in 4 modules) | `data/attachments.json` registry + `data/uploads/file-*`; access policy in `lib/db/attachment-access.ts`, download via auth-gated `/api/files/[id]` only |
 | Document Center | `/document-center`, `/document-center/[slug]` | Markdown files in `content/document-center/`, gray-matter + marked + DOMPurify |
 | Profile | `/my-worklife/profile` | `data/profiles/{userId}.json` (extended fields) + `users.json` identity; self-edit + avatar upload |
 | Requests | `/request-hub`, `/todo/tasks`, `/todo/approvals` | `data/requests/{userId}.json`, `tasks/{userId}.json`; routed to manager, unified approvals inbox |
@@ -215,7 +222,7 @@ In rough priority order:
 
 1. ~~**Temp passwords in URL query strings.**~~ **FIXED 2026-07-03.** `createUserAction`/`resetPasswordAction` now stash the generated password in a one-time HttpOnly, short-lived cookie (`lib/flash.ts`) read once by the `/people/[userId]` page — no longer in the URL. The audit-log leak (same class) was fixed earlier in `ea24b34`.
 
-2. **`/api/uploads/[filename]` is public — now actually reachable.** Anyone can `GET` any uploaded file by guessing the hash-derived filename. This was theoretical before; the new Profile module (Phase 1) lets employees upload **avatars** through this same public endpoint, so avatar images are now publicly guessable. Revisit: gate `/api/uploads` for non-branding purposes, or namespace avatars behind auth.
+2. ~~**`/api/uploads/[filename]` is public.**~~ **PARTIALLY FIXED 2026-07-15.** The public route now serves ONLY branding/avatar images (`isPublicUploadFilename` allowlist: `logo-|favicon-|hero-|avatar-` prefixes); private attachments (`file-*`) 404 there and are only reachable through the auth-gated `/api/files/[id]` route, whose per-module policy lives in `lib/db/attachment-access.ts` (unit-tested, request access scoped to the requester's manager/delegate). Remaining: avatars are still publicly guessable by hash (accepted for v1).
 
 3. **`countLeaveDays` counts weekends.** Documented as v2 deferred. Users with weekly leave hit annual quota faster than expected.
 

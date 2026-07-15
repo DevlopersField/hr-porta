@@ -8,6 +8,7 @@ import bcrypt from 'bcrypt';
 import { createUser, getUserByEmail, listUsers, type User } from './users';
 import { PERMISSIONS } from '../permissions';
 import { createLeaveRequest } from './leaves';
+import { listProjects, createProject } from './projects';
 import { logger } from '../logger';
 
 // ============= CONFIG =============
@@ -113,6 +114,14 @@ export async function seedDemoOrg(): Promise<void> {
   for (const [email, name, title] of eng) engUsers.push(await mk(email, name, 'Engineering', title, sara.id));
   for (const [email, name, title] of sales) await mk(email, name, 'Sales', title, tom.id);
   await mk('liam.wong@acme.test', 'Liam Wong', 'HR', 'Recruiter', grace.id);
+
+  // Starter projects so the timesheet is usable out of the box.
+  if ((await listProjects()).length === 0) {
+    await createProject({ name: 'Website Redesign', code: 'WEB' });
+    await createProject({ name: 'Mobile App', code: 'APP' });
+    await createProject({ name: 'Internal Tools', code: 'INT' });
+    await createProject({ name: 'Customer Onboarding', code: 'ONB' });
+  }
 
   // A little sample leave so the approvals inbox isn't empty.
   const year = new Date().getUTCFullYear();
