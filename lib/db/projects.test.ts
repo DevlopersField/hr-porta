@@ -14,8 +14,27 @@ describe('createProject + getProject', () => {
     expect(p.name).toBe('Website Redesign');
     expect(p.code).toBe('WEB');
     expect(p.active).toBe(true);
+    expect(p.description).toBe('');
     const fetched = await getProject(p.id);
     expect(fetched?.name).toBe('Website Redesign');
+  });
+
+  it('creates a project with description and initial tasks in one call', async () => {
+    const { createProject } = await import('./projects');
+    const p = await createProject({
+      name: 'Portal v2',
+      description: 'Full rebuild of the customer portal',
+      tasks: ['Design', 'Development', 'QA'],
+    });
+    expect(p.description).toBe('Full rebuild of the customer portal');
+    expect(p.tasks.map(t => t.name)).toEqual(['Design', 'Development', 'QA']);
+    expect(p.tasks.every(t => t.id.startsWith('ptk_'))).toBe(true);
+  });
+
+  it('dedupes initial task names case-insensitively and skips blanks', async () => {
+    const { createProject } = await import('./projects');
+    const p = await createProject({ name: 'Dedup', tasks: ['Design', ' design ', '', 'QA'] });
+    expect(p.tasks.map(t => t.name)).toEqual(['Design', 'QA']);
   });
 
   it('rejects an empty name', async () => {

@@ -155,11 +155,12 @@ function EntryEditRow({
 export default async function TimesheetPage({
   searchParams,
 }: {
-  searchParams: Promise<{ week?: string; edit?: string }>;
+  searchParams: Promise<{ week?: string; edit?: string; add?: string; pt?: string }>;
 }) {
   const user = await requireSession();
-  const { week: weekParam, edit: editId } = await searchParams;
+  const { week: weekParam, edit: editId, add: addDate, pt: addProjectTask } = await searchParams;
   const today = new Date().toISOString().slice(0, 10);
+  const prefillDate = /^\d{4}-\d{2}-\d{2}$/.test(addDate ?? '') ? addDate! : today;
   const weekStart = /^\d{4}-\d{2}-\d{2}$/.test(weekParam ?? '') ? mondayOf(weekParam!) : mondayOf(today);
   const weekEnd = addDays(weekStart, 6);
   const weekDates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -251,7 +252,8 @@ export default async function TimesheetPage({
       </div>
 
       {/* ============= LOG TIME ============= */}
-      <GlassPanel>
+      {/* Prefilled by the grid's + links via ?add=<date>&pt=<projectId|taskId>. */}
+      <GlassPanel id="log-time">
         <h2 className="text-lg font-semibold mb-4">Log time</h2>
         {activeProjects.length === 0 ? (
           <p className="text-sm text-text-muted">
@@ -261,9 +263,9 @@ export default async function TimesheetPage({
           <form action={addTimesheetEntryAction} className="flex flex-wrap items-end gap-3">
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium" htmlFor="ts-pt">Project / task</label>
-              <ProjectTaskSelect projects={activeProjects} id="ts-pt" />
+              <ProjectTaskSelect projects={activeProjects} id="ts-pt" defaultValue={addProjectTask} />
             </div>
-            <Input name="date" type="date" label="Date" defaultValue={today} required />
+            <Input name="date" type="date" label="Date" defaultValue={prefillDate} required />
             <Input name="hours" label="Hours (H:MM)" placeholder="5:30" required />
             <Input name="note" label="Note (optional)" placeholder="What did you work on?" />
             <Button type="submit">Add entry</Button>
@@ -309,7 +311,21 @@ export default async function TimesheetPage({
                   {weekDates.map(d => (
                     // eslint-disable-next-line react/forbid-dom-props
                     <td key={d} style={cellStyle}>
-                      {cells.has(d) ? formatHoursHM(cells.get(d)!) : <span className="text-text-muted">—</span>}
+                      {cells.has(d) ? (
+                        // Filled cell: jump to that day's entries below for edit/delete.
+                        <a href={`#day-${d}`} className="font-medium underline-offset-2 hover:underline">
+                          {formatHoursHM(cells.get(d)!)}
+                        </a>
+                      ) : (
+                        // Empty cell: + prefills the form with this date AND this row's project/task.
+                        <Link
+                          href={`${weekHref(weekStart, `&add=${d}&pt=${encodeURIComponent(key)}`)}#log-time`}
+                          className="text-text-muted hover:text-text"
+                          aria-label={`Log time for ${rowLabel(key)} on ${d}`}
+                        >
+                          +
+                        </Link>
+                      )}
                     </td>
                   ))}
                   {/* eslint-disable-next-line react/forbid-dom-props */}
@@ -317,6 +333,27 @@ export default async function TimesheetPage({
                 </tr>
               );
             })}
+            {activeProjects.length > 0 && (
+              // eslint-disable-next-line react/forbid-dom-props
+              <tr style={{ borderTop: '1px solid var(--color-border)' } as React.CSSProperties}>
+                {/* eslint-disable-next-line react/forbid-dom-props */}
+                <td style={{ ...rowHeadStyle, color: 'var(--color-text-muted)', fontSize: '12px' } as React.CSSProperties}>Add entry</td>
+                {weekDates.map(d => (
+                  // eslint-disable-next-line react/forbid-dom-props
+                  <td key={d} style={cellStyle}>
+                    <Link
+                      href={`${weekHref(weekStart, `&add=${d}`)}#log-time`}
+                      className="text-text-muted hover:text-text text-base"
+                      aria-label={`Log time on ${d}`}
+                    >
+                      +
+                    </Link>
+                  </td>
+                ))}
+                {/* eslint-disable-next-line react/forbid-dom-props */}
+                <td style={cellStyle}></td>
+              </tr>
+            )}
             {sortedRows.length > 0 && (
               // eslint-disable-next-line react/forbid-dom-props
               <tr style={{ borderTop: '2px solid var(--color-border)', background: 'var(--color-surface)' } as React.CSSProperties}>
@@ -338,7 +375,7 @@ export default async function TimesheetPage({
 
       {/* ============= ENTRIES (edit/delete) ============= */}
       {[...dayGroups.entries()].map(([date, dayEntries]) => (
-        <GlassPanel key={date}>
+        <GlassPanel key={date} id={`day-${date}`}>
           <div className="flex items-center gap-3 mb-1">
             <h3 className="text-base font-semibold">{dayLabel(date)}</h3>
             <span className="text-sm text-text-muted">
@@ -405,10 +442,26 @@ export default async function TimesheetPage({
       {canManageProjects && (
         <GlassPanel>
           <h2 className="text-lg font-semibold mb-4">Projects</h2>
-          <form action={createProjectAction} className="flex flex-wrap items-end gap-3 mb-6">
-            <Input name="name" label="Project name" placeholder="e.g. Website Redesign" required />
-            <Input name="code" label="Code (optional)" placeholder="e.g. WEB" />
-            <Button type="submit">Add project</Button>
+          <form action={createProjectAction} className="flex flex-col gap-3 mb-6">
+            <div className="flex flex-wrap items-end gap-3">
+              <Input name="name" label="Project name" placeholder="e.g. Website Redesign" required />
+              <Input name="code" label="Code (optional)" placeholder="e.g. WEB" />
+              <Input name="tasks" label="Tasks (comma-separated)" placeholder="Design, Development, QA" />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium" htmlFor="prj-desc">Description (optional)</label>
+              <textarea
+                id="prj-desc"
+                name="description"
+                rows={2}
+                placeholder="What is this project about?"
+                // eslint-disable-next-line react/forbid-dom-props
+                style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface-strong)', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' } as React.CSSProperties}
+              />
+            </div>
+            <div>
+              <Button type="submit">Add project</Button>
+            </div>
           </form>
           <ul className="flex flex-col gap-4">
             {allProjects.map(p => {
@@ -423,6 +476,7 @@ export default async function TimesheetPage({
                       <Button type="submit" variant="ghost" size="sm">{p.active ? 'Archive' : 'Restore'}</Button>
                     </form>
                   </div>
+                  {p.description && <p className="text-sm text-text-muted">{p.description}</p>}
                   <div className="flex items-center gap-2 flex-wrap text-sm text-text-muted">
                     Tasks:
                     {p.tasks.length === 0

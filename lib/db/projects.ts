@@ -18,6 +18,7 @@ export const ProjectSchema = z.object({
   id: z.string(),
   name: z.string(),
   code: z.string().nullable().default(null),
+  description: z.string().default(''),
   active: z.boolean().default(true),
   // Tasks scope time entries within a project; entries without a task fall
   // under the implicit "Other" bucket (taskId null).
@@ -50,17 +51,29 @@ export async function getProject(id: string): Promise<Project | null> {
 export type CreateProjectInput = {
   name: string;
   code?: string | null;
+  description?: string;
+  // Initial task names; blanks skipped, duplicates deduped case-insensitively.
+  tasks?: string[];
 };
 
 export async function createProject(input: CreateProjectInput): Promise<Project> {
   const name = input.name.trim();
   if (!name) throw new Error('Project name is required');
+  const seen = new Set<string>();
+  const tasks: ProjectTask[] = [];
+  for (const raw of input.tasks ?? []) {
+    const taskName = raw.trim();
+    if (!taskName || seen.has(taskName.toLowerCase())) continue;
+    seen.add(taskName.toLowerCase());
+    tasks.push({ id: `ptk_${crypto.randomBytes(6).toString('hex')}`, name: taskName });
+  }
   const project: Project = {
     id: `prj_${crypto.randomBytes(6).toString('hex')}`,
     name,
     code: input.code?.trim() || null,
+    description: input.description?.trim() ?? '',
     active: true,
-    tasks: [],
+    tasks,
     createdAt: new Date().toISOString(),
   };
   await updateJson(PATH, ProjectsFileSchema, EMPTY, (current) => {

@@ -24,6 +24,9 @@ const AddEntrySchema = z.object({
 const CreateProjectSchema = z.object({
   name: z.string().min(1).max(120),
   code: z.string().max(20).optional(),
+  description: z.string().max(500).optional(),
+  // Comma-separated initial task names.
+  tasks: z.string().max(500).optional(),
 });
 
 const AddTaskSchema = z.object({
@@ -93,8 +96,18 @@ export async function deleteTimesheetEntryAction(entryId: string): Promise<void>
 export async function createProjectAction(formData: FormData): Promise<void> {
   const user = await requireSession(PERMISSIONS.MANAGE_PROJECTS);
   const input = CreateProjectSchema.parse(Object.fromEntries(formData));
-  const project = await createProject({ name: input.name, code: input.code });
-  await auditLog({ actorId: user.id, action: 'project.create', target: project.id, details: { name: project.name } });
+  const project = await createProject({
+    name: input.name,
+    code: input.code,
+    description: input.description,
+    tasks: input.tasks ? input.tasks.split(',') : [],
+  });
+  await auditLog({
+    actorId: user.id,
+    action: 'project.create',
+    target: project.id,
+    details: { name: project.name, tasks: project.tasks.map(t => t.name) },
+  });
   revalidatePath('/attendance/timesheet');
 }
 
