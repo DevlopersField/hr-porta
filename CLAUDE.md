@@ -4,9 +4,11 @@
 > Read this first. It's a load-bearing summary so you can continue work without re-discovering everything.
 
 > **2026-07-15:** Attachment security hardening (public/private upload split, scoped
-> request-attachment access, nosniff, upload-first ordering) + project timesheet
-> (projects registry, manual per-project hour logging, `MANAGE_PROJECTS` permission).
-> Test count now **201**. `tsc --noEmit`, `vitest run`, `next build` all clean.
+> request-attachment access, nosniff, upload-first ordering) + full project timesheet
+> system (weekly Mon–Sun grid, projects with tasks, H:MM entry, edit/delete, team
+> view, `MANAGE_PROJECTS` permission) + optional zero-cost SMTP email (invites &
+> password resets via `lib/email.ts`) + design pass (border radii reduced: sm 4 /
+> md 6 / lg 10 / pill 8). Test count now **219**. `tsc`, `vitest`, `next build` clean.
 
 > **2026-07-03 buildout:** Every nav route that used to 404 is now a working module
 > (Profile, Engage, To-do/Tasks, To-do/Approvals, Request Hub, Workflow Delegates,
@@ -72,7 +74,8 @@ A proper fix is to run `pnpm approve-builds` once and commit the result. Hasn't 
 | Settings | `/settings/{appearance,branding,layout,locale}` | `data/settings.json`, live theme customisation, image uploads |
 | Leave | `/leave/{balance,request,approvals}` | `data/leaves/{userId}.json`, 4 types, status pills, self-approval blocked |
 | Attendance | `/attendance/clock` | `data/attendance/{userId}.json`, single open day, Open/Closed status pills |
-| Timesheet | `/attendance/timesheet` | `data/timesheets/{userId}.json` + `data/projects.json`; manual per-project hours (select project + date + hours + note), per-project month totals, 24h/day cap, `MANAGE_PROJECTS` admins create/archive projects inline |
+| Timesheet | `/attendance/timesheet` | `data/timesheets/{userId}.json` + `data/projects.json`; weekly Mon–Sun grid (project/task rows × day columns, day/row/week totals), week-by-week nav, H:MM entry (`5:30`) against project + task (projects contain tasks; taskId null = "Other"), edit/delete any entry, month-by-project summary, team week view (`VIEW_TEAM_ATTENDANCE` = direct reports, `VIEW_ALL_ATTENDANCE` = everyone), 24h/day cap, `MANAGE_PROJECTS` admins manage projects/tasks inline |
+| Email | (infra, optional) | `lib/email.ts`; nodemailer over any free SMTP (env `SMTP_HOST/PORT/USER/PASS/FROM`, see `.env.example`); invite + password-reset mails with temp password; logged no-op when unconfigured — zero external cost |
 | Attachments | (embedded in 4 modules) | `data/attachments.json` registry + `data/uploads/file-*`; access policy in `lib/db/attachment-access.ts`, download via auth-gated `/api/files/[id]` only |
 | Document Center | `/document-center`, `/document-center/[slug]` | Markdown files in `content/document-center/`, gray-matter + marked + DOMPurify |
 | Profile | `/my-worklife/profile` | `data/profiles/{userId}.json` (extended fields) + `users.json` identity; self-edit + avatar upload |

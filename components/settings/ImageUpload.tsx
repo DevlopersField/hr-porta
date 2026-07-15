@@ -76,7 +76,7 @@ export function ImageUpload({ label, purpose, currentUrl, onUpload, onClear }: P
                 style={{
                   background: '#DC2626',
                   color: 'white',
-                  borderRadius: '999px',
+                  borderRadius: 'var(--radius-md)',
                   padding: '4px',
                   border: 'none',
                   cursor: 'pointer',

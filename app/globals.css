@@ -25,10 +25,10 @@
   --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.04);
   --shadow-elevated: 0 1px 3px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.06);
   --shadow-glass: 0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.04);
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 24px;
-  --radius-pill: 999px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-pill: 8px;
   --sidebar-width: 264px;
   --topbar-height: 64px;
   /* Chart tokens — magnitude uses --color-primary; status trio below (validated) */
