@@ -1,12 +1,9 @@
 // components/ui/FileInput.tsx
 
 // ============= IMPORTS =============
+// Server Component: importing from lib/uploads (node:fs) is safe here.
+import { FILE_ACCEPT } from '@/lib/uploads';
 import styles from './FileInput.module.css';
-
-// ============= CONSTANTS =============
-// Kept in sync with lib/uploads FILE_ACCEPT (duplicated here to avoid pulling
-// node:fs into any client boundary that renders this input).
-export const DEFAULT_ACCEPT = 'image/png,image/jpeg,image/webp,application/pdf,.pdf,.docx,.xlsx,.csv,.txt';
 
 // ============= TYPES =============
 type Props = {
@@ -18,7 +15,7 @@ type Props = {
 };
 
 // ============= COMPONENT =============
-export function FileInput({ name, label = 'Attachments', accept = DEFAULT_ACCEPT, multiple = true, hint }: Props) {
+export function FileInput({ name, label = 'Attachments', accept = FILE_ACCEPT, multiple = true, hint }: Props) {
   return (
     <div className={styles.wrap}>
       <label className={styles.label}>{label}</label>

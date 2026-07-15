@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { requireSession } from '@/lib/auth';
 import { PERMISSIONS } from '@/lib/permissions';
 import { createPost, toggleReaction, ALLOWED_EMOJIS } from '@/lib/db/engage';
-import { createAttachmentsFromFiles } from '@/lib/db/attachments';
+import { createAttachmentsFromFiles, setAttachmentsRecord, getUploadedFiles } from '@/lib/db/attachments';
 import { auditLog } from '@/lib/db/audit';
 
 // ============= SCHEMAS =============
@@ -25,10 +25,10 @@ const ReactionSchema = z.object({
 export async function createPostAction(formData: FormData): Promise<void> {
   const user = await requireSession(PERMISSIONS.PUBLISH_ENGAGE);
   const input = CreatePostSchema.parse(Object.fromEntries(formData));
-  const files = formData.getAll('attachments').filter((f): f is File => f instanceof File);
-  const ids = await createAttachmentsFromFiles(files, user.id, 'engage', null);
+  const ids = await createAttachmentsFromFiles(getUploadedFiles(formData), user.id, 'engage', null);
   const created = await createPost({ authorId: user.id, title: input.title, body: input.body, attachmentIds: ids });
-  await auditLog({ actorId: user.id, action: 'engage.post', target: created.id, details: { title: input.title } });
+  await setAttachmentsRecord(ids, created.id);
+  await auditLog({ actorId: user.id, action: 'engage.post', target: created.id, details: { title: input.title, attachmentIds: ids } });
   revalidatePath('/engage');
 }
 

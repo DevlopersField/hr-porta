@@ -49,4 +49,15 @@ describe('attachments registry', () => {
     const list = await listAttachments(ids);
     expect(list.map(a => a.originalName)).toEqual(['one.png', 'two.png']);
   });
+
+  it('setAttachmentsRecord backfills recordId on the given ids only', async () => {
+    const { createAttachmentsFromFiles, setAttachmentsRecord, listAttachments } = await import('./attachments');
+    const ids = await createAttachmentsFromFiles([pngFile('a.png'), pngFile('b.png')], 'u1', 'request', null);
+    const otherIds = await createAttachmentsFromFiles([pngFile('c.png')], 'u1', 'request', null);
+    await setAttachmentsRecord(ids, 'req_42');
+    const updated = await listAttachments(ids);
+    expect(updated.map(a => a.recordId)).toEqual(['req_42', 'req_42']);
+    const untouched = await listAttachments(otherIds);
+    expect(untouched[0]!.recordId).toBeNull();
+  });
 });

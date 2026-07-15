@@ -3,7 +3,7 @@
 // ============= IMPORTS =============
 import { requireSession } from '@/lib/auth';
 import { listUserRequests, REQUEST_TYPES, type RequestType } from '@/lib/db/requests';
-import { listAttachments } from '@/lib/db/attachments';
+import { resolveAttachmentsById, pickAttachments } from '@/lib/db/attachments';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -26,9 +26,7 @@ export default async function RequestHubPage() {
   const requests = (await listUserRequests(user.id)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   // Batch-resolve every request's attachments in a single lookup, then index by id.
-  const allAttachmentIds = requests.flatMap(r => r.attachmentIds);
-  const resolved = await listAttachments(allAttachmentIds);
-  const attachmentsById = new Map(resolved.map(a => [a.id, a]));
+  const attachmentsById = await resolveAttachmentsById(requests.flatMap(r => r.attachmentIds));
 
   return (
     <div className="flex flex-col gap-6">
@@ -91,9 +89,7 @@ export default async function RequestHubPage() {
             )}
             {requests.map(r => {
               const withdraw = async () => { 'use server'; await withdrawRequestAction(r.id); };
-              const atts = r.attachmentIds
-                .map(id => attachmentsById.get(id))
-                .filter((a): a is NonNullable<typeof a> => a !== undefined);
+              const atts = pickAttachments(attachmentsById, r.attachmentIds);
               return (
                 // eslint-disable-next-line react/forbid-dom-props
                 <tr key={r.id} style={{ borderTop: '1px solid var(--color-border)' } as React.CSSProperties}>

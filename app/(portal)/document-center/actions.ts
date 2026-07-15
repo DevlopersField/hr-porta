@@ -5,14 +5,13 @@
 import { revalidatePath } from 'next/cache';
 import { requireSession } from '@/lib/auth';
 import { PERMISSIONS } from '@/lib/permissions';
-import { createAttachmentsFromFiles } from '@/lib/db/attachments';
+import { createAttachmentsFromFiles, getUploadedFiles } from '@/lib/db/attachments';
 import { auditLog } from '@/lib/db/audit';
 
 // ============= UPLOAD FILES =============
 export async function uploadDocumentFilesAction(formData: FormData): Promise<void> {
   const user = await requireSession(PERMISSIONS.EDIT_DOCUMENTS);
-  const files = formData.getAll('attachments').filter((f): f is File => f instanceof File);
-  const ids = await createAttachmentsFromFiles(files, user.id, 'document-center', null);
+  const ids = await createAttachmentsFromFiles(getUploadedFiles(formData), user.id, 'document-center', null);
   await auditLog({
     actorId: user.id,
     action: 'document.upload',

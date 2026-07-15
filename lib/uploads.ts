@@ -45,6 +45,16 @@ export async function saveUploadedImage(
   return { filename, publicUrl: `/api/uploads/${filename}` };
 }
 
+// ============= PUBLIC/PRIVATE SPLIT =============
+// Only branding + avatar images are servable by the unauthenticated
+// /api/uploads route. Private attachments (file-<hex>.<ext>, written by
+// saveUploadedFile) must go through the auth-gated /api/files/[id] route.
+const PUBLIC_FILENAME_RE = /^(logo|favicon|hero|avatar)-[a-f0-9]+\.[a-z0-9]+$/;
+
+export function isPublicUploadFilename(filename: string): boolean {
+  return PUBLIC_FILENAME_RE.test(filename);
+}
+
 // ============= READ =============
 export async function readUploadStream(filename: string): Promise<{ buffer: Buffer; contentType: string }> {
   // Strict filename validation: no slashes, no traversal, must match our pattern

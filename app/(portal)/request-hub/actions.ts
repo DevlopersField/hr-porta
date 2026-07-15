@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireSession } from '@/lib/auth';
 import { createRequest, withdrawRequest, REQUEST_TYPES } from '@/lib/db/requests';
-import { createAttachmentsFromFiles } from '@/lib/db/attachments';
+import { createAttachmentsFromFiles, setAttachmentsRecord, getUploadedFiles } from '@/lib/db/attachments';
 import { auditLog } from '@/lib/db/audit';
 
 // ============= SCHEMAS =============
@@ -25,8 +25,8 @@ export async function submitRequestAction(formData: FormData): Promise<void> {
     input.type === 'expense' && input.amount && input.amount.trim() !== ''
       ? Number(input.amount)
       : null;
-  const files = formData.getAll('attachments').filter((f): f is File => f instanceof File);
-  const ids = await createAttachmentsFromFiles(files, user.id, 'request', null);
+  // Upload first: file validation failures abort before any record exists.
+  const ids = await createAttachmentsFromFiles(getUploadedFiles(formData), user.id, 'request', null);
   const created = await createRequest({
     userId: user.id,
     type: input.type,
@@ -35,11 +35,12 @@ export async function submitRequestAction(formData: FormData): Promise<void> {
     amount: amount !== null && Number.isFinite(amount) ? amount : null,
     attachmentIds: ids,
   });
+  await setAttachmentsRecord(ids, created.id);
   await auditLog({
     actorId: user.id,
     action: 'request.submit',
     target: created.id,
-    details: { type: input.type, title: input.title },
+    details: { type: input.type, title: input.title, attachmentIds: ids },
   });
   revalidatePath('/request-hub');
 }

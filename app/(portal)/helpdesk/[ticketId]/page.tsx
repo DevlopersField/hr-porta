@@ -13,7 +13,7 @@ import {
   type TicketStatus,
 } from '@/lib/db/helpdesk';
 import { listUsers } from '@/lib/db/users';
-import { listAttachments, type Attachment } from '@/lib/db/attachments';
+import { resolveAttachmentsById, pickAttachments } from '@/lib/db/attachments';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
 import { StatusPill } from '@/components/ui/StatusPill';
@@ -65,15 +65,11 @@ export default async function TicketDetailPage({
 
   // ============= ATTACHMENTS =============
   // Batch-resolve every attachment referenced by the ticket and its replies.
-  const allAttachmentIds = [
+  const attachmentMap = await resolveAttachmentsById([
     ...ticket.attachmentIds,
     ...ticket.replies.flatMap(r => r.attachmentIds),
-  ];
-  const resolvedAttachments = await listAttachments(allAttachmentIds);
-  const attachmentMap = new Map<string, Attachment>(resolvedAttachments.map(a => [a.id, a]));
-  const pickAttachments = (ids: string[]): Attachment[] =>
-    ids.map(id => attachmentMap.get(id)).filter((a): a is Attachment => a !== undefined);
-  const ticketAttachments = pickAttachments(ticket.attachmentIds);
+  ]);
+  const ticketAttachments = pickAttachments(attachmentMap, ticket.attachmentIds);
 
   // ============= PER-ID BINDINGS =============
   const doReply = async (fd: FormData) => {
@@ -142,7 +138,7 @@ export default async function TicketDetailPage({
             <p className="text-sm mt-2 whitespace-pre-line">{reply.body}</p>
             {reply.attachmentIds.length > 0 && (
               <div className="mt-2">
-                <AttachmentList attachments={pickAttachments(reply.attachmentIds)} compact />
+                <AttachmentList attachments={pickAttachments(attachmentMap, reply.attachmentIds)} compact />
               </div>
             )}
           </GlassPanel>

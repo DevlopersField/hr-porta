@@ -5,7 +5,7 @@ import { requireSession } from '@/lib/auth';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
 import { listPosts, ALLOWED_EMOJIS } from '@/lib/db/engage';
 import { listUsers } from '@/lib/db/users';
-import { listAttachments } from '@/lib/db/attachments';
+import { resolveAttachmentsById, pickAttachments } from '@/lib/db/attachments';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -22,9 +22,7 @@ export default async function EngagePage() {
   const nameById = new Map(users.map(u => [u.id, u.displayName]));
 
   // Batch-resolve every post's attachments in a single lookup, keyed by id.
-  const allAttachmentIds = posts.flatMap(p => p.attachmentIds);
-  const attachments = await listAttachments(allAttachmentIds);
-  const attachmentById = new Map(attachments.map(a => [a.id, a]));
+  const attachmentById = await resolveAttachmentsById(posts.flatMap(p => p.attachmentIds));
 
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
@@ -60,9 +58,7 @@ export default async function EngagePage() {
 
       {posts.map(post => {
         const authorName = nameById.get(post.authorId) ?? 'Unknown';
-        const postAttachments = post.attachmentIds
-          .map(id => attachmentById.get(id))
-          .filter((a): a is NonNullable<typeof a> => a !== undefined);
+        const postAttachments = pickAttachments(attachmentById, post.attachmentIds);
         return (
           <GlassPanel key={post.id}>
             <div className="flex flex-col gap-3">

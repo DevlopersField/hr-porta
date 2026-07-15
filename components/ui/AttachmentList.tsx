@@ -1,7 +1,9 @@
 // components/ui/AttachmentList.tsx
 
 // ============= IMPORTS =============
+// Server Component: importing from lib/uploads (node:fs) is safe here.
 import { FileText, Download } from 'lucide-react';
+import { isImageMime } from '@/lib/uploads';
 import styles from './AttachmentList.module.css';
 
 // ============= TYPES =============
@@ -25,10 +27,6 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function isImage(mime: string): boolean {
-  return mime === 'image/png' || mime === 'image/jpeg' || mime === 'image/webp';
-}
-
 // ============= COMPONENT =============
 export function AttachmentList({ attachments, compact = false }: Props) {
   if (attachments.length === 0) return null;
@@ -39,7 +37,7 @@ export function AttachmentList({ attachments, compact = false }: Props) {
         return (
           <li key={a.id} className={styles.item}>
             <a href={href} target="_blank" rel="noopener noreferrer" className={styles.link}>
-              {!compact && isImage(a.mime) ? (
+              {!compact && isImageMime(a.mime) ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={href} alt={a.originalName} className={styles.thumb} />
               ) : (

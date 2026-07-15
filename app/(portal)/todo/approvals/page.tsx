@@ -7,6 +7,8 @@ import { listPendingRoutedTo, type Request, type RequestType } from '@/lib/db/re
 import { getDelegatorsFor } from '@/lib/db/delegates';
 import { listPendingForAll, type LeaveType } from '@/lib/db/leaves';
 import { listUsers } from '@/lib/db/users';
+import { resolveAttachmentsById, pickAttachments } from '@/lib/db/attachments';
+import { AttachmentList } from '@/components/ui/AttachmentList';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -59,6 +61,9 @@ export default async function ApprovalsInboxPage() {
   const users = await listUsers();
   const userMap = new Map(users.map(u => [u.id, u]));
 
+  // Receipts and supporting documents for the requests awaiting decision.
+  const attachmentsById = await resolveAttachmentsById(requests.flatMap(r => r.attachmentIds));
+
   return (
     <div className="flex flex-col gap-8">
       <h1 className="text-3xl font-semibold">Approvals</h1>
@@ -84,6 +89,7 @@ export default async function ApprovalsInboxPage() {
                       {r.amount !== null && <> · {r.amount.toFixed(2)}</>}
                     </p>
                     <p className="text-sm text-text-muted whitespace-pre-line">{r.details}</p>
+                    <AttachmentList attachments={pickAttachments(attachmentsById, r.attachmentIds)} compact />
                     <p className="text-xs text-text-muted">Submitted {new Date(r.createdAt).toLocaleString()}</p>
                   </div>
                   <form action={decideRequestAction} className="flex flex-col gap-2 min-w-[200px]">

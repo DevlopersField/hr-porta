@@ -73,3 +73,26 @@ describe('readUploadStream', () => {
     await expect(readUploadStream('missing.png')).rejects.toThrow();
   });
 });
+
+describe('isPublicUploadFilename', () => {
+  it('accepts branding/avatar purposes (logo, favicon, hero, avatar)', async () => {
+    const { isPublicUploadFilename } = await import('./uploads');
+    expect(isPublicUploadFilename('logo-abc123.png')).toBe(true);
+    expect(isPublicUploadFilename('favicon-abc123.png')).toBe(true);
+    expect(isPublicUploadFilename('hero-abc123.jpg')).toBe(true);
+    expect(isPublicUploadFilename('avatar-abc123.webp')).toBe(true);
+  });
+
+  it('rejects private attachment files (file-* prefix)', async () => {
+    const { isPublicUploadFilename } = await import('./uploads');
+    expect(isPublicUploadFilename('file-0123456789abcdef.pdf')).toBe(false);
+    expect(isPublicUploadFilename('file-0123456789abcdef.png')).toBe(false);
+  });
+
+  it('rejects arbitrary or spoofed names', async () => {
+    const { isPublicUploadFilename } = await import('./uploads');
+    expect(isPublicUploadFilename('passwd')).toBe(false);
+    expect(isPublicUploadFilename('logo.png')).toBe(false); // no hash segment
+    expect(isPublicUploadFilename('xlogo-abc.png')).toBe(false);
+  });
+});

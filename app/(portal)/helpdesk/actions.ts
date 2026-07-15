@@ -11,13 +11,12 @@ import {
   createTicket,
   addReply,
   setTicketStatus,
-  setTicketAttachments,
   getTicket,
   TICKET_CATEGORIES,
   TICKET_PRIORITIES,
   TICKET_STATUSES,
 } from '@/lib/db/helpdesk';
-import { createAttachmentsFromFiles } from '@/lib/db/attachments';
+import { createAttachmentsFromFiles, setAttachmentsRecord, getUploadedFiles } from '@/lib/db/attachments';
 import { auditLog } from '@/lib/db/audit';
 
 // ============= SCHEMAS =============
@@ -40,21 +39,23 @@ const StatusSchema = z.object({
 export async function createTicketAction(formData: FormData): Promise<void> {
   const user = await requireSession();
   const input = CreateSchema.parse(Object.fromEntries(formData));
+  // Upload first: file validation failures abort before the ticket exists,
+  // so a rejected attachment can never leave behind an orphaned ticket.
+  const ids = await createAttachmentsFromFiles(getUploadedFiles(formData), user.id, 'helpdesk', null);
   const created = await createTicket({
     requesterId: user.id,
     category: input.category,
     priority: input.priority,
     subject: input.subject,
     body: input.body,
+    attachmentIds: ids,
   });
-  const files = formData.getAll('attachments').filter((f): f is File => f instanceof File);
-  const ids = await createAttachmentsFromFiles(files, user.id, 'helpdesk', created.id);
-  await setTicketAttachments(created.id, ids);
+  await setAttachmentsRecord(ids, created.id);
   await auditLog({
     actorId: user.id,
     action: 'helpdesk.create',
     target: created.id,
-    details: { category: input.category, priority: input.priority, subject: input.subject },
+    details: { category: input.category, priority: input.priority, subject: input.subject, attachmentIds: ids },
   });
   revalidatePath('/helpdesk');
   redirect(`/helpdesk/${created.id}`);
@@ -70,10 +71,9 @@ export async function addReplyAction(ticketId: string, formData: FormData): Prom
   if (!hasPermission(user, PERMISSIONS.EDIT_HELPDESK) && ticket.requesterId !== user.id) {
     throw new ForbiddenError('Cannot reply to this ticket');
   }
-  const files = formData.getAll('attachments').filter((f): f is File => f instanceof File);
-  const ids = await createAttachmentsFromFiles(files, user.id, 'helpdesk', ticketId);
+  const ids = await createAttachmentsFromFiles(getUploadedFiles(formData), user.id, 'helpdesk', ticketId);
   await addReply(ticketId, user.id, input.body, ids);
-  await auditLog({ actorId: user.id, action: 'helpdesk.reply', target: ticketId });
+  await auditLog({ actorId: user.id, action: 'helpdesk.reply', target: ticketId, details: { attachmentIds: ids } });
   revalidatePath(`/helpdesk/${ticketId}`);
   revalidatePath('/helpdesk');
 }
