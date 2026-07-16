@@ -19,7 +19,8 @@ export async function seedIfEmpty(): Promise<void> {
   // The fs mkdir + data-seed defaults copy are an fs-only convenience. On the
   // blobs backend there is no local dir; settings fall back to schema defaults
   // (which parse fine) and the admin/demo users go through createUser (blobs-backed).
-  if (!storageIsBlobs()) {
+    if (!storageIsBlobs()) {
+          try {
     const dataDir = getDataDir();
     await fs.mkdir(dataDir, { recursive: true });
 
@@ -33,7 +34,10 @@ export async function seedIfEmpty(): Promise<void> {
         try { await fs.copyFile(src, target); } catch { /* skip if no seed file */ }
       }
     }
-  }
+          } catch (err) {
+                  logger.warn({ err }, 'seedIfEmpty: failed to prepare local data dir, continuing without fs seed');
+          }
+    }
 
   // Create bootstrap admin if no users exist
   const users = await listUsers();
