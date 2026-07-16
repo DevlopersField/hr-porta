@@ -21,7 +21,12 @@ export function storageIsBlobs(): boolean {
   // instead. At runtime in a Netlify function NEXT_PHASE is unset and Blobs is
   // used normally.
   if (process.env.NEXT_PHASE === 'phase-production-build') return false;
-  return process.env.STORAGE_BACKEND === 'blobs' || process.env.NETLIFY === 'true';
+    return (
+          process.env.STORAGE_BACKEND === 'blobs' ||
+          process.env.NETLIFY === 'true' ||
+          !!process.env.AWS_LAMBDA_FUNCTION_NAME ||
+          !!process.env.LAMBDA_TASK_ROOT
+        );
 }
 
 // Lazily obtain the Netlify Blobs store. Called ONLY inside blobs branches so
@@ -36,7 +41,11 @@ export function getDataDir(): string {
   if (process.env.DATA_DIR) {
     return process.env.DATA_DIR;
   }
-  if (process.env.NETLIFY === 'true') {
+    if (
+          process.env.NETLIFY === 'true' ||
+          !!process.env.AWS_LAMBDA_FUNCTION_NAME ||
+          !!process.env.LAMBDA_TASK_ROOT
+        ) {
     return '/tmp/data';
   }
   return path.join(process.cwd(), 'data');
