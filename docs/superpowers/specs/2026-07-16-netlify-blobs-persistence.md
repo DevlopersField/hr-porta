@@ -88,9 +88,9 @@ Fs path unchanged.
   // ...createUser({ ..., mustChangePassword: fixed ? false : true })
   if (!fixed) logger.warn({ email, tempPassword: password }, '...');
   ```
-  With `BOOTSTRAP_ADMIN_EMAIL=virajchaudhary@gmail.com` +
-  `BOOTSTRAP_ADMIN_PASSWORD=virajchaudhary`, the admin logs in with those creds,
-  no forced change, and persists in Blobs (seed is idempotent — runs once).
+  With `BOOTSTRAP_ADMIN_EMAIL` + `BOOTSTRAP_ADMIN_PASSWORD` set in the Netlify
+  dashboard (never committed), the admin logs in with those creds, no forced
+  change, and persists in Blobs (seed is idempotent — runs once).
 
 ### Dependency + config
 
@@ -116,5 +116,5 @@ Fs path unchanged.
 - Local (fs path, unchanged): `tsc --noEmit`, `vitest run` (expect 237),
   `next build` all clean.
 - Live (blobs path): after deploy, `curl /api/health` → 200 all-true, then log
-  in at the Netlify URL with `virajchaudhary@gmail.com` / `virajchaudhary` and
+  in at the Netlify URL with the configured admin email + password and
   confirm it reaches `/home`; create a record, redeploy, confirm it persists.
