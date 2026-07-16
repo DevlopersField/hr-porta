@@ -7,8 +7,24 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { requireSession } from '@/lib/auth';
 import { PERMISSIONS } from '@/lib/permissions';
-import { addTimesheetEntry, updateTimesheetEntry, deleteTimesheetEntry, parseHoursInput } from '@/lib/db/timesheets';
-import { createProject, setProjectActive, addProjectTask } from '@/lib/db/projects';
+import {
+  addTimesheetEntry,
+  updateTimesheetEntry,
+  deleteTimesheetEntry,
+  parseHoursInput,
+  sumHoursForProjectAllUsers,
+} from '@/lib/db/timesheets';
+import {
+  createProject,
+  setProjectDueDate,
+  setProjectDescription,
+  addProjectTask,
+  updateProjectTask,
+  deleteProject,
+  PROJECT_STATUSES,
+  type ProjectStatus,
+} from '@/lib/db/projects';
+import { listUsers } from '@/lib/db/users';
 import { auditLog } from '@/lib/db/audit';
 import { setNoticeFlash } from '@/lib/flash';
 
@@ -30,7 +46,14 @@ const CreateProjectSchema = z.object({
   description: z.string().max(500).optional(),
   // Comma-separated initial task names.
   tasks: z.string().max(500).optional(),
-  week: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+});
+
+const SetStatusSchema = z.object({
+  status: z.enum(PROJECT_STATUSES),
+});
+
+const SetDueDateSchema = z.object({
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')),
 });
 
 function timesheetHref(week?: string): string {
@@ -39,6 +62,19 @@ function timesheetHref(week?: string): string {
 
 const AddTaskSchema = z.object({
   taskName: z.string().min(1).max(120),
+  description: z.string().max(500).optional(),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')),
+});
+
+const UpdateTaskSchema = z.object({
+  name: z.string().min(1).max(120),
+  description: z.string().max(500).optional(),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')),
+  status: z.enum(PROJECT_STATUSES),
+});
+
+const UpdateDescriptionSchema = z.object({
+  description: z.string().max(2000).optional(),
 });
 
 function splitProjectTask(value: string): { projectId: string; taskId: string | null } {
@@ -121,23 +157,97 @@ export async function createProjectAction(formData: FormData): Promise<void> {
     details: { name: project.name, tasks: project.tasks.map(t => t.name) },
   });
   await setNoticeFlash('Project created');
+  revalidatePath('/attendance/timesheet/projects');
   revalidatePath('/attendance/timesheet');
-  redirect(timesheetHref(input.week));
+  redirect('/attendance/timesheet/projects');
 }
 
 export async function addProjectTaskAction(projectId: string, formData: FormData): Promise<void> {
   const user = await requireSession(PERMISSIONS.MANAGE_PROJECTS);
   const input = AddTaskSchema.parse(Object.fromEntries(formData));
-  const task = await addProjectTask(projectId, input.taskName);
+  const task = await addProjectTask(projectId, input.taskName, {
+    description: input.description,
+    dueDate: input.dueDate ? input.dueDate : null,
+  });
   await auditLog({ actorId: user.id, action: 'project.add_task', target: projectId, details: { taskId: task.id, name: task.name } });
   await setNoticeFlash('Task added');
+  revalidatePath('/attendance/timesheet/projects');
+  revalidatePath(`/attendance/timesheet/projects/${projectId}`);
   revalidatePath('/attendance/timesheet');
 }
 
-export async function setProjectActiveAction(projectId: string, active: boolean): Promise<void> {
+// ============= KANBAN DRAG-AND-DROP (task-level) =============
+// Called directly from the client board's drop handler (plain args, no
+// FormData/<form> submission) — so no redirect() here; a redirect() throw
+// would surface as an uncaught error client-side. Just revalidate.
+export async function moveProjectTaskStatusAction(
+  projectId: string,
+  taskId: string,
+  status: ProjectStatus,
+): Promise<void> {
   const user = await requireSession(PERMISSIONS.MANAGE_PROJECTS);
-  await setProjectActive(projectId, active);
-  await auditLog({ actorId: user.id, action: active ? 'project.restore' : 'project.archive', target: projectId });
-  await setNoticeFlash('Project updated');
+  const parsed = SetStatusSchema.parse({ status });
+  await updateProjectTask(projectId, taskId, { status: parsed.status });
+  await auditLog({
+    actorId: user.id,
+    action: 'project.task.set_status',
+    target: taskId,
+    details: { projectId, status: parsed.status },
+  });
+  revalidatePath('/attendance/timesheet/projects');
+  revalidatePath(`/attendance/timesheet/projects/${projectId}`);
+  revalidatePath('/attendance/timesheet');
+}
+
+// ============= PROJECT DETAIL MODAL =============
+export async function updateProjectDescriptionAction(projectId: string, formData: FormData): Promise<void> {
+  const user = await requireSession(PERMISSIONS.MANAGE_PROJECTS);
+  const input = UpdateDescriptionSchema.parse(Object.fromEntries(formData));
+  await setProjectDescription(projectId, input.description ?? '');
+  await auditLog({ actorId: user.id, action: 'project.set_description', target: projectId });
+  await setNoticeFlash('Description updated');
+  revalidatePath('/attendance/timesheet/projects');
+  revalidatePath('/attendance/timesheet');
+}
+
+export async function updateProjectTaskAction(projectId: string, taskId: string, formData: FormData): Promise<void> {
+  const user = await requireSession(PERMISSIONS.MANAGE_PROJECTS);
+  const input = UpdateTaskSchema.parse(Object.fromEntries(formData));
+  await updateProjectTask(projectId, taskId, {
+    name: input.name,
+    description: input.description ?? '',
+    dueDate: input.dueDate ? input.dueDate : null,
+    status: input.status,
+  });
+  await auditLog({ actorId: user.id, action: 'project.update_task', target: projectId, details: { taskId } });
+  await setNoticeFlash('Task updated');
+  revalidatePath('/attendance/timesheet/projects');
+  revalidatePath(`/attendance/timesheet/projects/${projectId}`);
+  revalidatePath('/attendance/timesheet');
+}
+
+export async function deleteProjectAction(projectId: string, _formData: FormData): Promise<void> {
+  const user = await requireSession(PERMISSIONS.MANAGE_PROJECTS);
+  const users = await listUsers();
+  const totalHours = await sumHoursForProjectAllUsers(projectId, users.map(u => u.id));
+  if (totalHours > 0) {
+    throw new Error('Cannot delete a project with logged time — no time may be logged against a project you delete.');
+  }
+  await deleteProject(projectId);
+  await auditLog({ actorId: user.id, action: 'project.delete', target: projectId });
+  await setNoticeFlash('Project deleted');
+  revalidatePath('/attendance/timesheet/projects');
+  revalidatePath('/attendance/timesheet');
+  redirect('/attendance/timesheet/projects');
+}
+
+export async function setProjectDueDateAction(projectId: string, formData: FormData): Promise<void> {
+  const user = await requireSession(PERMISSIONS.MANAGE_PROJECTS);
+  const input = SetDueDateSchema.parse(Object.fromEntries(formData));
+  const dueDate = input.dueDate ? input.dueDate : null;
+  await setProjectDueDate(projectId, dueDate);
+  await auditLog({ actorId: user.id, action: 'project.set_due_date', target: projectId, details: { dueDate } });
+  await setNoticeFlash('Due date updated');
+  revalidatePath('/attendance/timesheet/projects');
   revalidatePath('/attendance/timesheet');
 }

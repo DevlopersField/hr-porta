@@ -1,9 +1,10 @@
 // app/(portal)/attendance/timesheet/page.tsx
 // Weekly project timesheet: a Mon–Sun grid of project/task rows with per-day
 // hours, week-by-week navigation, H:MM entry against a selected project +
-// task, edit/delete on any entry, month summary, and a team view for
-// managers. Add/edit/new-project run in URL-driven modals (?add / ?edit /
-// ?newProject). Clock in/out (presence) stays at /attendance/clock.
+// task, edit/delete on any entry (via the grid's edit modal), month summary,
+// and a team view for managers. Add/edit run in URL-driven modals (?add /
+// ?edit). Project management lives at /attendance/timesheet/projects.
+// Clock in/out (presence) stays at /attendance/clock.
 
 // ============= IMPORTS =============
 import Link from 'next/link';
@@ -17,7 +18,6 @@ import {
   listMonthEntries,
   summarizeByProject,
   formatHoursHM,
-  type TimesheetEntry,
 } from '@/lib/db/timesheets';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
@@ -28,9 +28,6 @@ import {
   addTimesheetEntryAction,
   updateTimesheetEntryAction,
   deleteTimesheetEntryAction,
-  createProjectAction,
-  addProjectTaskAction,
-  setProjectActiveAction,
 } from './actions';
 import styles from './timesheet.module.css';
 
@@ -50,12 +47,6 @@ function addDays(date: string, days: number): string {
 function shortDate(date: string): string {
   return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', {
     day: 'numeric', month: 'short', timeZone: 'UTC',
-  });
-}
-
-function dayLabel(date: string): string {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', {
-    weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC',
   });
 }
 
@@ -115,44 +106,14 @@ function EntryFields({
   );
 }
 
-// ============= ENTRY ROW =============
-function entryLabel(projectById: Map<string, Project>, e: TimesheetEntry): string {
-  const p = projectById.get(e.projectId);
-  if (!p) return 'Unknown project';
-  const base = p.code ? `${p.code} — ${p.name}` : p.name;
-  const task = e.taskId ? (p.tasks.find(t => t.id === e.taskId)?.name ?? 'Unknown task') : 'Other';
-  return `${base} · ${task}`;
-}
-
-function EntryRow({
-  entry, projectById, editHref,
-}: {
-  entry: TimesheetEntry; projectById: Map<string, Project>; editHref: string;
-}) {
-  const remove = async () => { 'use server'; await deleteTimesheetEntryAction(entry.id); };
-  return (
-    <div className="flex items-center gap-3 flex-wrap py-2">
-      <span className="text-sm font-medium">{entryLabel(projectById, entry)}</span>
-      <StatusPill tone="green">{formatHoursHM(entry.hours)}</StatusPill>
-      {entry.note && <span className="text-sm text-text-muted">{entry.note}</span>}
-      <span className="ml-auto flex items-center gap-1">
-        <Link href={editHref}><Button variant="ghost" size="sm">Edit</Button></Link>
-        <form action={remove}>
-          <Button type="submit" variant="ghost" size="sm">Delete</Button>
-        </form>
-      </span>
-    </div>
-  );
-}
-
 // ============= PAGE =============
 export default async function TimesheetPage({
   searchParams,
 }: {
-  searchParams: Promise<{ week?: string; edit?: string; add?: string; pt?: string; newProject?: string }>;
+  searchParams: Promise<{ week?: string; edit?: string; add?: string; pt?: string }>;
 }) {
   const user = await requireSession();
-  const { week: weekParam, edit: editId, add: addDate, pt: addProjectTask, newProject } = await searchParams;
+  const { week: weekParam, edit: editId, add: addDate, pt: addProjectTask } = await searchParams;
   const today = new Date().toISOString().slice(0, 10);
   const prefillDate = /^\d{4}-\d{2}-\d{2}$/.test(addDate ?? '') ? addDate! : today;
   const weekStart = /^\d{4}-\d{2}-\d{2}$/.test(weekParam ?? '') ? mondayOf(weekParam!) : mondayOf(today);
@@ -168,7 +129,8 @@ export default async function TimesheetPage({
     listMonth(user.id, yearNum, monthNum),
     listUsers(),
   ]);
-  const activeProjects = allProjects.filter(p => p.active);
+  // All projects remain loggable regardless of lifecycle status.
+  const activeProjects = allProjects;
   const projectById = new Map(allProjects.map(p => [p.id, p]));
   const canManageProjects = hasPermission(user, PERMISSIONS.MANAGE_PROJECTS);
 
@@ -177,16 +139,23 @@ export default async function TimesheetPage({
   const closeHref = weekHref(weekStart);
   const showAddModal = Boolean(addDate);
   const editEntry = editId ? weekEntries.find(e => e.id === editId) : undefined;
-  const showNewProjectModal = canManageProjects && newProject === '1';
 
   // ============= WEEKLY GRID (project/task rows × Mon–Sun) =============
-  // rowKey = projectId|taskId; cells sum hours per date.
-  const gridRows = new Map<string, Map<string, number>>();
+  // rowKey = projectId|taskId; cells sum hours per date and carry the most
+  // recent entry (by createdAt desc) so a filled cell can open its edit
+  // modal directly. weekEntries is already sorted date desc, createdAt desc
+  // (see listEntriesInRange), so the first entry seen per date is the latest.
+  const gridRows = new Map<string, Map<string, { hours: number; entryId: string }>>();
   for (const e of weekEntries) {
     const key = `${e.projectId}|${e.taskId ?? ''}`;
     if (!gridRows.has(key)) gridRows.set(key, new Map());
     const cells = gridRows.get(key)!;
-    cells.set(e.date, (cells.get(e.date) ?? 0) + e.hours);
+    const existing = cells.get(e.date);
+    if (existing) {
+      existing.hours += e.hours;
+    } else {
+      cells.set(e.date, { hours: e.hours, entryId: e.id });
+    }
   }
   const rowLabel = (key: string): string => {
     const [pid, tid] = key.split('|', 2);
@@ -200,13 +169,6 @@ export default async function TimesheetPage({
   const weekTotal = dayTotals.reduce((s, h) => s + h, 0);
   const dayClass = (d: string, i: number) =>
     [d === today ? styles.today : '', i >= 5 ? styles.weekend : ''].join(' ').trim();
-
-  // Day-grouped entry list under the grid (edit/delete lives here).
-  const dayGroups = new Map<string, TimesheetEntry[]>();
-  for (const e of weekEntries) {
-    if (!dayGroups.has(e.date)) dayGroups.set(e.date, []);
-    dayGroups.get(e.date)!.push(e);
-  }
 
   // ============= MONTH SUMMARY + TEAM =============
   const monthTotal = monthEntries.reduce((s, e) => s + e.hours, 0);
@@ -231,6 +193,9 @@ export default async function TimesheetPage({
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-3xl font-semibold">Timesheet</h1>
         <span className="flex items-center gap-2">
+          {canManageProjects && (
+            <Link href="/attendance/timesheet/projects"><Button variant="ghost">Manage projects</Button></Link>
+          )}
           <Link href="/attendance/clock"><Button variant="ghost">Clock in / out</Button></Link>
           <Link href={weekHref(weekStart, `&add=${today}`)}><Button>Log time</Button></Link>
         </span>
@@ -287,17 +252,20 @@ export default async function TimesheetPage({
                 </tr>
               )}
               {sortedRows.map(([key, cells]) => {
-                const rowTotal = [...cells.values()].reduce((s, h) => s + h, 0);
+                const rowTotal = [...cells.values()].reduce((s, c) => s + c.hours, 0);
                 return (
                   <tr key={key}>
                     <td className={styles.rowHead}>{rowLabel(key)}</td>
                     {weekDates.map((d, i) => (
                       <td key={d} className={dayClass(d, i)}>
                         {cells.has(d) ? (
-                          // Filled cell: jump to that day's entries below for edit/delete.
-                          <a href={`#day-${d}`} className={styles.cellHours}>
-                            {formatHoursHM(cells.get(d)!)}
-                          </a>
+                          // Filled cell: open the edit modal for that day's entry directly.
+                          <Link
+                            href={weekHref(weekStart, `&edit=${cells.get(d)!.entryId}`)}
+                            className={styles.cellHours}
+                          >
+                            {formatHoursHM(cells.get(d)!.hours)}
+                          </Link>
                         ) : (
                           // Empty cell: + opens the log modal prefilled with this date AND row's project/task.
                           <Link
@@ -347,23 +315,6 @@ export default async function TimesheetPage({
         </div>
       </GlassPanel>
 
-      {/* ============= ENTRIES (edit/delete) ============= */}
-      {[...dayGroups.entries()].map(([date, dayEntries]) => (
-        <GlassPanel key={date} id={`day-${date}`}>
-          <div className="flex items-center gap-3 mb-1">
-            <h3 className="text-base font-semibold">{dayLabel(date)}</h3>
-            <span className="text-sm text-text-muted">
-              {formatHoursHM(dayEntries.reduce((s, e) => s + e.hours, 0))}
-            </span>
-          </div>
-          <div className="flex flex-col divide-y divide-border">
-            {dayEntries.map(e => (
-              <EntryRow key={e.id} entry={e} projectById={projectById} editHref={weekHref(weekStart, `&edit=${e.id}`)} />
-            ))}
-          </div>
-        </GlassPanel>
-      ))}
-
       {/* ============= MONTH SUMMARY ============= */}
       {perProjectMonth.size > 0 && (
         <section className="flex flex-col gap-3">
@@ -408,55 +359,12 @@ export default async function TimesheetPage({
         </GlassPanel>
       )}
 
-      {/* ============= PROJECT & TASK MANAGEMENT (admins) ============= */}
-      {canManageProjects && (
-        <GlassPanel>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Projects</h2>
-            <Link href={weekHref(weekStart, '&newProject=1')}>
-              <Button variant="secondary" size="sm">New project</Button>
-            </Link>
-          </div>
-          <ul className="flex flex-col gap-4">
-            {allProjects.map(p => {
-              const toggle = async () => { 'use server'; await setProjectActiveAction(p.id, !p.active); };
-              const addTask = addProjectTaskAction.bind(null, p.id);
-              return (
-                <li key={p.id} className="flex flex-col gap-2 border-b border-border pb-4 last:border-b-0">
-                  <div className="flex items-center gap-3 text-sm">
-                    <span className="font-medium">{p.code ? `${p.code} — ${p.name}` : p.name}</span>
-                    <StatusPill tone={p.active ? 'green' : 'amber'}>{p.active ? 'Active' : 'Archived'}</StatusPill>
-                    <form action={toggle} className="ml-auto">
-                      <Button type="submit" variant="ghost" size="sm">{p.active ? 'Archive' : 'Restore'}</Button>
-                    </form>
-                  </div>
-                  {p.description && <p className="text-sm text-text-muted">{p.description}</p>}
-                  <div className="flex items-center gap-2 flex-wrap text-sm text-text-muted">
-                    Tasks:
-                    {p.tasks.length === 0
-                      ? ' Other only'
-                      : p.tasks.map(t => <StatusPill key={t.id} tone="green">{t.name}</StatusPill>)}
-                  </div>
-                  {p.active && (
-                    <form action={addTask} className="flex items-end gap-2">
-                      <Input name="taskName" label="" placeholder="New task name" required />
-                      <Button type="submit" variant="ghost" size="sm">Add task</Button>
-                    </form>
-                  )}
-                </li>
-              );
-            })}
-            {allProjects.length === 0 && <li className="text-sm text-text-muted">No projects yet.</li>}
-          </ul>
-        </GlassPanel>
-      )}
-
       {/* ============= LOG TIME MODAL ============= */}
       {showAddModal && (
         <Modal title="Log time" closeHref={closeHref}>
           {activeProjects.length === 0 ? (
             <p className="text-sm text-text-muted">
-              No active projects yet{canManageProjects ? ' — create one from the Projects panel.' : '. Ask an administrator to add projects.'}
+              No projects yet{canManageProjects ? ' — create one from Manage projects.' : '. Ask an administrator to add projects.'}
             </p>
           ) : (
             <form action={addTimesheetEntryAction} className={styles.modalForm}>
@@ -489,40 +397,18 @@ export default async function TimesheetPage({
               }}
             />
             <div className={styles.modalFooter}>
-              <Link href={closeHref}><Button type="button" variant="ghost">Cancel</Button></Link>
-              <Button type="submit">Save changes</Button>
+              <Button type="submit" variant="danger" formAction={deleteTimesheetEntryAction.bind(null, editEntry.id)}>
+                Delete
+              </Button>
+              <span className="flex items-center gap-2 ml-auto">
+                <Link href={closeHref}><Button type="button" variant="ghost">Cancel</Button></Link>
+                <Button type="submit">Save changes</Button>
+              </span>
             </div>
           </form>
         </Modal>
       )}
 
-      {/* ============= NEW PROJECT MODAL ============= */}
-      {showNewProjectModal && (
-        <Modal title="New project" closeHref={closeHref}>
-          <form action={createProjectAction} className={styles.modalForm}>
-            <input type="hidden" name="week" value={weekStart} />
-            <Input name="name" label="Project name" placeholder="e.g. Website Redesign" required />
-            <div className={styles.fieldRow}>
-              <Input name="code" label="Code (optional)" placeholder="e.g. WEB" />
-              <Input name="tasks" label="Tasks (comma-separated)" placeholder="Design, Development, QA" />
-            </div>
-            <div className={styles.field}>
-              <label className={styles.fieldLabel} htmlFor="prj-desc">Description (optional)</label>
-              <textarea
-                id="prj-desc"
-                name="description"
-                rows={2}
-                placeholder="What is this project about?"
-                className={styles.textarea}
-              />
-            </div>
-            <div className={styles.modalFooter}>
-              <Link href={closeHref}><Button type="button" variant="ghost">Cancel</Button></Link>
-              <Button type="submit">Create project</Button>
-            </div>
-          </form>
-        </Modal>
-      )}
     </div>
   );
 }

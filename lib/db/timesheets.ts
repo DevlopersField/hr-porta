@@ -8,6 +8,11 @@ import { z } from 'zod';
 import crypto from 'node:crypto';
 import { readJson, updateJson } from './core';
 import { getProject } from './projects';
+import { formatHoursHM } from '../format-hours';
+
+// Re-exported so existing call sites keep working unchanged; the canonical,
+// dependency-free definition lives in lib/format-hours.ts.
+export { formatHoursHM };
 
 // ============= CONSTANTS =============
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -51,12 +56,6 @@ export function parseHoursInput(raw: string): number {
   throw new Error('Invalid hours — use H:MM (e.g. 5:30) or a decimal (e.g. 7.5)');
 }
 
-export function formatHoursHM(hours: number): string {
-  const totalMinutes = Math.round(hours * 60);
-  const h = Math.floor(totalMinutes / 60);
-  const m = totalMinutes % 60;
-  return `${h}:${String(m).padStart(2, '0')}`;
-}
 
 // ============= READS =============
 // monthPrefix is 'YYYY-MM'. Newest date first, ties broken by createdAt desc.
@@ -103,7 +102,6 @@ export async function addTimesheetEntry(input: AddTimesheetEntryInput): Promise<
   }
   const project = await getProject(input.projectId);
   if (!project) throw new Error('Project not found');
-  if (!project.active) throw new Error('Project is archived');
   const taskId = input.taskId ?? null;
   if (taskId !== null && !project.tasks.some(t => t.id === taskId)) {
     throw new Error('Task does not belong to this project');
@@ -152,7 +150,6 @@ export async function updateTimesheetEntry(
   if (patch.projectId !== undefined) {
     const project = await getProject(patch.projectId);
     if (!project) throw new Error('Project not found');
-    if (!project.active) throw new Error('Project is archived');
     const taskId = patch.taskId ?? null;
     if (taskId !== null && !project.tasks.some(t => t.id === taskId)) {
       throw new Error('Task does not belong to this project');
@@ -183,4 +180,18 @@ export async function deleteTimesheetEntry(userId: string, entryId: string): Pro
   await updateJson(pathFor(userId), TimesheetFileSchema, EMPTY, (current) => ({
     entries: current.entries.filter(e => e.id !== entryId),
   }));
+}
+
+// ============= AGGREGATES =============
+// Total hours logged against a project across every given user's shard, all
+// time. Admin-only (Projects page), so O(users) file reads is acceptable.
+export async function sumHoursForProjectAllUsers(projectId: string, userIds: string[]): Promise<number> {
+  let total = 0;
+  for (const userId of userIds) {
+    const data = await readJson(pathFor(userId), TimesheetFileSchema, EMPTY);
+    total += data.entries
+      .filter(e => e.projectId === projectId)
+      .reduce((sum, e) => sum + e.hours, 0);
+  }
+  return total;
 }

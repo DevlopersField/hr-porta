@@ -54,6 +54,8 @@ export const NAV: NavItem[] = [
     children: [
       { id: 'timesheet', label: 'Timesheet', href: '/attendance/timesheet', iconName: 'CalendarRange' },
       { id: 'clock', label: 'Clock In/Out', href: '/attendance/clock', iconName: 'Timer' },
+      { id: 'projects', label: 'Projects', href: '/attendance/timesheet/projects', iconName: 'FolderKanban',
+        requires: PERMISSIONS.MANAGE_PROJECTS },
     ],
   },
   { id: 'documents', label: 'Document Center', href: '/document-center', iconName: 'Folder' },

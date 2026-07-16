@@ -32,14 +32,11 @@ describe('addTimesheetEntry', () => {
     ).rejects.toThrow(/project/i);
   });
 
-  it('rejects an archived project', async () => {
+  it('allows logging time against any existing project', async () => {
     const { addTimesheetEntry } = await import('./timesheets');
-    const { setProjectActive } = await import('./projects');
-    const p = await makeProject('Sunset');
-    await setProjectActive(p.id, false);
-    await expect(
-      addTimesheetEntry({ userId: 'u1', projectId: p.id, date: '2026-07-14', hours: 1 }),
-    ).rejects.toThrow(/archived/i);
+    const p = await makeProject('Maintained');
+    const entry = await addTimesheetEntry({ userId: 'u1', projectId: p.id, date: '2026-07-14', hours: 1 });
+    expect(entry.hours).toBe(1);
   });
 
   it('rejects invalid hours (zero, negative, >24, bad increments ok)', async () => {
@@ -187,14 +184,14 @@ describe('updateTimesheetEntry', () => {
     await expect(updateTimesheetEntry('u1', e.id, { hours: 5 })).rejects.toThrow(/24/);
   });
 
-  it('rejects switching to an archived project', async () => {
-    const { addTimesheetEntry, updateTimesheetEntry } = await import('./timesheets');
-    const { setProjectActive } = await import('./projects');
+  it('allows switching to a different existing project', async () => {
+    const { addTimesheetEntry, updateTimesheetEntry, listMonthEntries } = await import('./timesheets');
     const a = await makeProject('Live');
-    const dead = await makeProject('Dead');
-    await setProjectActive(dead.id, false);
+    const done = await makeProject('Done');
     const e = await addTimesheetEntry({ userId: 'u1', projectId: a.id, date: '2026-07-14', hours: 1 });
-    await expect(updateTimesheetEntry('u1', e.id, { projectId: dead.id })).rejects.toThrow(/archived/i);
+    await updateTimesheetEntry('u1', e.id, { projectId: done.id });
+    const listed = await listMonthEntries('u1', '2026-07');
+    expect(listed[0]!.projectId).toBe(done.id);
   });
 });
 
@@ -210,5 +207,27 @@ describe('summarizeByProject', () => {
     const totals = summarizeByProject(entries);
     expect(totals.get(a.id)).toBe(5.5);
     expect(totals.get(b.id)).toBe(1);
+  });
+});
+
+describe('sumHoursForProjectAllUsers', () => {
+  it('sums hours logged against a project across multiple user shards', async () => {
+    const { addTimesheetEntry, sumHoursForProjectAllUsers } = await import('./timesheets');
+    const a = await makeProject('Alpha');
+    const b = await makeProject('Beta');
+    await addTimesheetEntry({ userId: 'u1', projectId: a.id, date: '2026-07-01', hours: 2 });
+    await addTimesheetEntry({ userId: 'u1', projectId: b.id, date: '2026-07-02', hours: 1 });
+    await addTimesheetEntry({ userId: 'u2', projectId: a.id, date: '2026-07-03', hours: 4 });
+    await addTimesheetEntry({ userId: 'u3', projectId: a.id, date: '2026-07-04', hours: 1.5 });
+    const total = await sumHoursForProjectAllUsers(a.id, ['u1', 'u2', 'u3']);
+    expect(total).toBe(7.5);
+  });
+
+  it('ignores users not passed in and returns 0 when nobody logged time', async () => {
+    const { addTimesheetEntry, sumHoursForProjectAllUsers } = await import('./timesheets');
+    const a = await makeProject('Alpha');
+    await addTimesheetEntry({ userId: 'u1', projectId: a.id, date: '2026-07-01', hours: 2 });
+    expect(await sumHoursForProjectAllUsers(a.id, ['u2', 'u3'])).toBe(0);
+    expect(await sumHoursForProjectAllUsers(a.id, [])).toBe(0);
   });
 });

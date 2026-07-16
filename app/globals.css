@@ -81,6 +81,37 @@ html, body {
   transition: background-color 250ms ease, color 250ms ease;
 }
 
+/* ============= THEMED SCROLLBARS ============= */
+/* Applied globally (html) rather than per-container, so it automatically
+   covers the sidebar, the timesheet grid's .gridScroll, modal bodies, and
+   the task board's horizontal scroll — all of them inherit from here. Thin,
+   rounded, no arrow buttons; colors derive from the active palette so light
+   and dark both stay correct with no extra rules. */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-text-muted);
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* ============= CARD PRIMITIVE (.glass-panel aliased for legacy compat) ============= */
 .card-panel, .glass-panel, .glass-panel-strong {
   background: var(--color-card);

@@ -7,13 +7,13 @@ beforeEach(() => {
 });
 
 describe('createProject + getProject', () => {
-  it('creates a project with name and optional code, active by default', async () => {
+  it('creates a project with name and optional code and no due date by default', async () => {
     const { createProject, getProject } = await import('./projects');
     const p = await createProject({ name: 'Website Redesign', code: 'WEB' });
     expect(p.id).toMatch(/^prj_/);
     expect(p.name).toBe('Website Redesign');
     expect(p.code).toBe('WEB');
-    expect(p.active).toBe(true);
+    expect(p.dueDate).toBeNull();
     expect(p.description).toBe('');
     const fetched = await getProject(p.id);
     expect(fetched?.name).toBe('Website Redesign');
@@ -50,15 +50,19 @@ describe('createProject + getProject', () => {
 });
 
 describe('listProjects', () => {
-  it('lists all projects sorted by name, or only active ones', async () => {
-    const { createProject, setProjectActive, listProjects } = await import('./projects');
-    const b = await createProject({ name: 'Beta' });
+  it('lists all projects sorted by name', async () => {
+    const { createProject, listProjects } = await import('./projects');
+    await createProject({ name: 'Beta' });
     await createProject({ name: 'Alpha' });
-    await setProjectActive(b.id, false);
     const all = await listProjects();
     expect(all.map(p => p.name)).toEqual(['Alpha', 'Beta']);
-    const active = await listProjects({ activeOnly: true });
-    expect(active.map(p => p.name)).toEqual(['Alpha']);
+  });
+});
+
+describe('PROJECT_STATUSES', () => {
+  it('uses the renamed 6-stage vocabulary (discuss/design/development/qa/uat/completed)', async () => {
+    const { PROJECT_STATUSES } = await import('./projects');
+    expect(PROJECT_STATUSES).toEqual(['discuss', 'design', 'development', 'qa', 'uat', 'completed']);
   });
 });
 
@@ -91,20 +95,109 @@ describe('addProjectTask', () => {
     const p = await createProject({ name: 'Legacy' });
     expect((await getProject(p.id))?.tasks).toEqual([]);
   });
+
+  it('defaults a new task to empty description, null dueDate, and discuss status', async () => {
+    const { createProject, addProjectTask } = await import('./projects');
+    const p = await createProject({ name: 'Defaults' });
+    const task = await addProjectTask(p.id, 'Bare task');
+    expect(task.description).toBe('');
+    expect(task.dueDate).toBeNull();
+    expect(task.status).toBe('discuss');
+  });
+
+  it('accepts optional description and dueDate on creation', async () => {
+    const { createProject, addProjectTask } = await import('./projects');
+    const p = await createProject({ name: 'Rich Task' });
+    const task = await addProjectTask(p.id, 'Detailed task', {
+      description: 'Do the thing',
+      dueDate: '2026-08-01',
+    });
+    expect(task.description).toBe('Do the thing');
+    expect(task.dueDate).toBe('2026-08-01');
+  });
 });
 
-describe('setProjectActive', () => {
-  it('archives and restores a project', async () => {
-    const { createProject, setProjectActive, getProject } = await import('./projects');
-    const p = await createProject({ name: 'Old Initiative' });
-    await setProjectActive(p.id, false);
-    expect((await getProject(p.id))?.active).toBe(false);
-    await setProjectActive(p.id, true);
-    expect((await getProject(p.id))?.active).toBe(true);
+describe('updateProjectTask', () => {
+  it('applies a partial update to an existing task', async () => {
+    const { createProject, addProjectTask, updateProjectTask, getProject } = await import('./projects');
+    const p = await createProject({ name: 'Update Me' });
+    const task = await addProjectTask(p.id, 'Original name');
+    await updateProjectTask(p.id, task.id, {
+      name: 'Renamed',
+      description: 'New description',
+      dueDate: '2026-09-01',
+      status: 'qa',
+    });
+    const after = await getProject(p.id);
+    const updated = after?.tasks.find(t => t.id === task.id);
+    expect(updated?.name).toBe('Renamed');
+    expect(updated?.description).toBe('New description');
+    expect(updated?.dueDate).toBe('2026-09-01');
+    expect(updated?.status).toBe('qa');
+  });
+
+  it('leaves fields not present in the patch unchanged', async () => {
+    const { createProject, addProjectTask, updateProjectTask, getProject } = await import('./projects');
+    const p = await createProject({ name: 'Partial Update' });
+    const task = await addProjectTask(p.id, 'Task', { description: 'Keep me' });
+    await updateProjectTask(p.id, task.id, { status: 'design' });
+    const after = await getProject(p.id);
+    const updated = after?.tasks.find(t => t.id === task.id);
+    expect(updated?.description).toBe('Keep me');
+    expect(updated?.status).toBe('design');
+  });
+
+  it('throws for a missing project or missing task', async () => {
+    const { createProject, addProjectTask, updateProjectTask } = await import('./projects');
+    const p = await createProject({ name: 'Existing' });
+    const task = await addProjectTask(p.id, 'Task');
+    await expect(updateProjectTask('prj_missing', task.id, { name: 'X' })).rejects.toThrow(/not found/i);
+    await expect(updateProjectTask(p.id, 'ptk_missing', { name: 'X' })).rejects.toThrow(/not found/i);
+  });
+});
+
+describe('deleteProject', () => {
+  it('removes a project from the list', async () => {
+    const { createProject, deleteProject, listProjects } = await import('./projects');
+    const p = await createProject({ name: 'To Delete' });
+    await createProject({ name: 'Keep' });
+    await deleteProject(p.id);
+    const all = await listProjects();
+    expect(all.map(pr => pr.name)).toEqual(['Keep']);
   });
 
   it('throws for a missing project', async () => {
-    const { setProjectActive } = await import('./projects');
-    await expect(setProjectActive('prj_missing', false)).rejects.toThrow(/not found/i);
+    const { deleteProject } = await import('./projects');
+    await expect(deleteProject('prj_missing')).rejects.toThrow(/not found/i);
+  });
+});
+
+describe('setProjectDescription', () => {
+  it('updates a project description', async () => {
+    const { createProject, setProjectDescription, getProject } = await import('./projects');
+    const p = await createProject({ name: 'Describe Me' });
+    await setProjectDescription(p.id, 'Now with a description');
+    expect((await getProject(p.id))?.description).toBe('Now with a description');
+  });
+
+  it('throws for a missing project', async () => {
+    const { setProjectDescription } = await import('./projects');
+    await expect(setProjectDescription('prj_missing', 'x')).rejects.toThrow(/not found/i);
+  });
+});
+
+describe('setProjectDueDate', () => {
+  it('sets and clears a due date', async () => {
+    const { createProject, setProjectDueDate, getProject } = await import('./projects');
+    const p = await createProject({ name: 'Dated Project' });
+    await setProjectDueDate(p.id, '2026-08-01');
+    expect((await getProject(p.id))?.dueDate).toBe('2026-08-01');
+    await setProjectDueDate(p.id, null);
+    expect((await getProject(p.id))?.dueDate).toBeNull();
+  });
+
+  it('throws for a missing project', async () => {
+    const { setProjectDueDate } = await import('./projects');
+    await expect(setProjectDueDate('prj_missing', '2026-08-01')).rejects.toThrow(/not found/i);
   });
 });
