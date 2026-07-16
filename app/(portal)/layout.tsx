@@ -1,5 +1,12 @@
 // app/(portal)/layout.tsx
 
+// Every authenticated page reads per-user data through the storage layer, which
+// on Netlify is Blobs — and Blobs only exists at request time, not during the
+// build. Force dynamic rendering so these pages are never prerendered at build
+// (which would throw MissingBlobsEnvironmentError). They are all auth-gated and
+// per-user anyway, so there is nothing to statically optimize.
+export const dynamic = 'force-dynamic';
+
 // ============= IMPORTS =============
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';

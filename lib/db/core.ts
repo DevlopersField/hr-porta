@@ -14,6 +14,13 @@ import type { z } from 'zod';
 // (which sets NETLIFY=true automatically) or when explicitly forced via
 // STORAGE_BACKEND=blobs. This is the single signal every module branches on.
 export function storageIsBlobs(): boolean {
+  // During `next build` (static prerender), Netlify Blobs is NOT provisioned yet
+  // — calling it throws MissingBlobsEnvironmentError and fails the build. Fall
+  // back to the fs backend so any page prerendered at build (e.g. /_not-found,
+  // which renders through the root layout's getSettings) reads schema defaults
+  // instead. At runtime in a Netlify function NEXT_PHASE is unset and Blobs is
+  // used normally.
+  if (process.env.NEXT_PHASE === 'phase-production-build') return false;
   return process.env.STORAGE_BACKEND === 'blobs' || process.env.NETLIFY === 'true';
 }
 

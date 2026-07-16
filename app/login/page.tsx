@@ -1,5 +1,10 @@
 // app/login/page.tsx
 
+// Reads settings (branding) through the storage layer, which is Netlify Blobs in
+// production — unavailable at build time. Render dynamically so it is not
+// prerendered (which would throw MissingBlobsEnvironmentError).
+export const dynamic = 'force-dynamic';
+
 // ============= IMPORTS =============
 import { redirect } from 'next/navigation';
 import { auth, signIn } from '@/lib/auth';
