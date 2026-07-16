@@ -5,7 +5,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import crypto from 'node:crypto';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { requireSession } from '@/lib/auth';
 import { PERMISSIONS, mergeSubmittedPermissions } from '@/lib/permissions';

@@ -5,3 +5,5 @@ ignoredBuiltDependencies:
   - bcrypt
 allowBuilds:
   bcrypt: false
+  sharp: true
+  unrs-resolver: true

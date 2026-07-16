@@ -3,7 +3,7 @@
 // ============= IMPORTS =============
 'use server';
 import { redirect } from 'next/navigation';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { requireSession } from '@/lib/auth';
 import { getUserById, setPasswordHash } from '@/lib/db/users';

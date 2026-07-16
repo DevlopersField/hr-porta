@@ -4,7 +4,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { createUser, getUserByEmail, listUsers, type User } from './users';
 import { PERMISSIONS } from '../permissions';
 import { createLeaveRequest } from './leaves';
