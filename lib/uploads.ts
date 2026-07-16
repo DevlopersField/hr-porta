@@ -2,10 +2,8 @@
 // lib/uploads.ts
 
 // ============= IMPORTS =============
-import fs from 'node:fs/promises';
-import path from 'node:path';
 import crypto from 'node:crypto';
-import { getDataDir } from './db/core';
+import { readBinary, writeBinary } from './db/core';
 
 // ============= CONFIG =============
 const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp'] as const;
@@ -36,9 +34,7 @@ export async function saveUploadedImage(
   const hash = crypto.createHash('sha256').update(buf).digest('hex').slice(0, 12);
   const ext = EXT_BY_MIME[file.type]!;
   const filename = `${purpose}-${hash}.${ext}`;
-  const target = path.join(getDataDir(), 'uploads', filename);
-  await fs.mkdir(path.dirname(target), { recursive: true });
-  await fs.writeFile(target, buf);
+  await writeBinary(`uploads/${filename}`, buf);
 
   return { filename, publicUrl: `/api/uploads/${filename}` };
 }
@@ -59,8 +55,10 @@ export async function readUploadStream(filename: string): Promise<{ buffer: Buff
   if (!/^[a-zA-Z0-9._-]+$/.test(filename)) {
     throw new Error('Invalid filename');
   }
-  const full = path.join(getDataDir(), 'uploads', filename);
-  const buffer = await fs.readFile(full);
+  const buffer = await readBinary(`uploads/${filename}`);
+  if (buffer == null) {
+    throw new Error('File not found');
+  }
   const ext = filename.split('.').pop()?.toLowerCase();
   const contentType =
     ext === 'png' ? 'image/png' :
@@ -115,9 +113,7 @@ export async function saveUploadedFile(file: File): Promise<StoredFile> {
   const buf = Buffer.from(await file.arrayBuffer());
   const rand = crypto.randomBytes(8).toString('hex');
   const storedName = `file-${rand}.${ext}`;
-  const target = path.join(getDataDir(), 'uploads', storedName);
-  await fs.mkdir(path.dirname(target), { recursive: true });
-  await fs.writeFile(target, buf);
+  await writeBinary(`uploads/${storedName}`, buf);
   // Preserve a human-friendly original name (sanitized) for downloads.
   const originalName = (file.name || `attachment.${ext}`).replace(/[^a-zA-Z0-9._ -]/g, '_').slice(0, 120);
   return { storedName, originalName, mime: file.type, size: file.size };

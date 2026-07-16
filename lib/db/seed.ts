@@ -10,23 +10,28 @@ import { PERMISSIONS } from '../permissions';
 import { createLeaveRequest } from './leaves';
 import { listProjects, createProject, addProjectTask } from './projects';
 import { logger } from '../logger';
-import { getDataDir } from './core';
+import { getDataDir, storageIsBlobs } from './core';
 
 
 
 // ============= SEED =============
 export async function seedIfEmpty(): Promise<void> {
-  const dataDir = getDataDir();
-  await fs.mkdir(dataDir, { recursive: true });
+  // The fs mkdir + data-seed defaults copy are an fs-only convenience. On the
+  // blobs backend there is no local dir; settings fall back to schema defaults
+  // (which parse fine) and the admin/demo users go through createUser (blobs-backed).
+  if (!storageIsBlobs()) {
+    const dataDir = getDataDir();
+    await fs.mkdir(dataDir, { recursive: true });
 
-  // Copy data-seed defaults if files don't exist yet
-  const seedDir = path.join(process.cwd(), 'data-seed');
-  for (const file of ['users.json', 'settings.json']) {
-    const target = path.join(dataDir, file);
-    try { await fs.access(target); }
-    catch {
-      const src = path.join(seedDir, file);
-      try { await fs.copyFile(src, target); } catch { /* skip if no seed file */ }
+    // Copy data-seed defaults if files don't exist yet
+    const seedDir = path.join(process.cwd(), 'data-seed');
+    for (const file of ['users.json', 'settings.json']) {
+      const target = path.join(dataDir, file);
+      try { await fs.access(target); }
+      catch {
+        const src = path.join(seedDir, file);
+        try { await fs.copyFile(src, target); } catch { /* skip if no seed file */ }
+      }
     }
   }
 
@@ -34,8 +39,11 @@ export async function seedIfEmpty(): Promise<void> {
   const users = await listUsers();
   if (users.length === 0) {
     const email = process.env.BOOTSTRAP_ADMIN_EMAIL ?? 'admin@local.test';
-    const tempPassword = crypto.randomBytes(12).toString('base64url');
-    const passwordHash = await bcrypt.hash(tempPassword, 12);
+    // A fixed password (env) makes login stable across deploys/instances; when
+    // unset we generate a temp one and force a change on first login.
+    const fixed = process.env.BOOTSTRAP_ADMIN_PASSWORD;
+    const password = fixed ?? crypto.randomBytes(12).toString('base64url');
+    const passwordHash = await bcrypt.hash(password, 12);
     await createUser({
       email,
       passwordHash,
@@ -43,9 +51,11 @@ export async function seedIfEmpty(): Promise<void> {
       permissions: ['*'],
       department: 'HR',
       jobTitle: 'Administrator',
-      mustChangePassword: true,
+      mustChangePassword: fixed ? false : true,
     });
-    logger.warn({ email, tempPassword }, 'BOOTSTRAP ADMIN CREATED — save this password, you must change it on first login');
+    if (!fixed) {
+      logger.warn({ email, tempPassword: password }, 'BOOTSTRAP ADMIN CREATED — save this password, you must change it on first login');
+    }
   }
 
   // Optionally seed a realistic demo company for multi-user/team testing.

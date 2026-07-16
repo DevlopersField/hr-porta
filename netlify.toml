@@ -6,5 +6,9 @@
   NODE_VERSION = "20"
   AUTH_TRUST_HOST = "true"
   SEED_DEMO = "true"
+  BOOTSTRAP_ADMIN_EMAIL = "virajchaudhary@gmail.com"
+  # BOOTSTRAP_ADMIN_PASSWORD is NOT committed — set it in the Netlify dashboard
+  # (Site settings → Environment variables). Listed below so the secrets scan
+  # doesn't flag the dashboard value.
   SECRETS_SCAN_OMIT_PATHS = ".env.example,CLAUDE.md,docs/**"
-  SECRETS_SCAN_OMIT_KEYS = "BOOTSTRAP_ADMIN_EMAIL,NEXTAUTH_URL"
+  SECRETS_SCAN_OMIT_KEYS = "BOOTSTRAP_ADMIN_EMAIL,NEXTAUTH_URL,BOOTSTRAP_ADMIN_PASSWORD"

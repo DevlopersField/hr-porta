@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@netlify/blobs": "^10.7.9",
     "@types/bcryptjs": "^2.4.6",
     "@types/proper-lockfile": "^4.1.4",
     "bcryptjs": "^2.4.3",
