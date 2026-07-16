@@ -9,12 +9,21 @@ import type { z } from 'zod';
 
 // ============= CONFIG =============
 export function getDataDir(): string {
-  if (process.env.DATA_DIR) {
-    return process.env.DATA_DIR;
-  }
+  // If we are running in production Netlify environment, always use the temporary /tmp/data
+  // unless a safe container-compatible DATA_DIR path is explicitly set.
   if (process.env.NETLIFY === 'true') {
+    if (process.env.DATA_DIR && !process.env.DATA_DIR.startsWith('/Volumes')) {
+      return process.env.DATA_DIR;
+    }
     return '/tmp/data';
   }
+
+  // Locally, use DATA_DIR if specified and not referencing container-incompatible /Volumes paths
+  if (process.env.DATA_DIR && !process.env.DATA_DIR.startsWith('/Volumes')) {
+    return process.env.DATA_DIR;
+  }
+
+  // Fallback default local directory
   return path.join(process.cwd(), 'data');
 }
 
