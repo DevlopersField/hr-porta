@@ -5,6 +5,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { getDataDir } from './db/core';
 
 // ============= CONFIG =============
 const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/webp'] as const;
@@ -15,9 +16,6 @@ const EXT_BY_MIME: Record<string, string> = {
 };
 const MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
 
-function getDataDir(): string {
-  return process.env.DATA_DIR ?? path.join(process.cwd(), 'data');
-}
 
 // ============= TYPES =============
 export type UploadResult = { filename: string; publicUrl: string };

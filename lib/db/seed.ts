@@ -10,11 +10,9 @@ import { PERMISSIONS } from '../permissions';
 import { createLeaveRequest } from './leaves';
 import { listProjects, createProject, addProjectTask } from './projects';
 import { logger } from '../logger';
+import { getDataDir } from './core';
 
-// ============= CONFIG =============
-function getDataDir(): string {
-  return process.env.DATA_DIR ?? path.join(process.cwd(), 'data');
-}
+
 
 // ============= SEED =============
 export async function seedIfEmpty(): Promise<void> {

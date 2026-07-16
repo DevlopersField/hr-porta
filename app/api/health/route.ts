@@ -4,10 +4,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getSettings } from '@/lib/db/settings';
+import { getDataDir } from '@/lib/db/core';
 
 // ============= GET =============
 export async function GET() {
-  const dataDir = process.env.DATA_DIR ?? path.join(process.cwd(), 'data');
+  const dataDir = getDataDir();
   const checks = {
     dataDirReadable: false,
     dataDirWritable: false,

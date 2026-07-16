@@ -8,8 +8,14 @@ import lockfile from 'proper-lockfile';
 import type { z } from 'zod';
 
 // ============= CONFIG =============
-function getDataDir(): string {
-  return process.env.DATA_DIR ?? path.join(process.cwd(), 'data');
+export function getDataDir(): string {
+  if (process.env.DATA_DIR) {
+    return process.env.DATA_DIR;
+  }
+  if (process.env.NETLIFY === 'true') {
+    return '/tmp/data';
+  }
+  return path.join(process.cwd(), 'data');
 }
 
 const LOCK_OPTIONS = {

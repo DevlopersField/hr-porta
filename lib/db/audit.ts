@@ -3,6 +3,7 @@
 // ============= IMPORTS =============
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { getDataDir } from './core';
 
 // ============= TYPES =============
 export type AuditEntry = {
@@ -13,10 +14,7 @@ export type AuditEntry = {
   details?: Record<string, unknown>;
 };
 
-// ============= CONFIG =============
-function getDataDir(): string {
-  return process.env.DATA_DIR ?? path.join(process.cwd(), 'data');
-}
+
 
 // ============= WRITE =============
 export async function auditLog(entry: Omit<AuditEntry, 'ts'>): Promise<void> {
