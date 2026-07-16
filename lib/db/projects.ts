@@ -106,6 +106,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
 export type AddProjectTaskInput = {
   description?: string;
   dueDate?: string | null;
+  status?: ProjectStatus;
 };
 
 export async function addProjectTask(
@@ -120,7 +121,7 @@ export async function addProjectTask(
     name,
     description: input.description?.trim() ?? '',
     dueDate: input.dueDate ?? null,
-    status: 'discuss',
+    status: input.status ?? 'discuss',
   };
   await updateJson(PATH, ProjectsFileSchema, EMPTY, (current) => {
     const target = current.projects.find(p => p.id === projectId);

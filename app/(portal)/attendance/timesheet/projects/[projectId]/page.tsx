@@ -70,7 +70,17 @@ export default async function ProjectBoardPage({
         <Modal title="Add task" closeHref={closeHref}>
           <form action={addProjectTaskAction.bind(null, projectId)} className={styles.modalForm}>
             <Input name="taskName" label="Task name" placeholder="e.g. QA pass" required />
-            <Input name="dueDate" type="date" label="Due date (optional)" />
+            <div className={styles.fieldRow}>
+              <Input name="dueDate" type="date" label="Due date (optional)" />
+              <div className={styles.field}>
+                <label className={styles.fieldLabel} htmlFor="new-task-status">Status</label>
+                <select id="new-task-status" name="status" defaultValue="discuss" className={styles.select}>
+                  {PROJECT_STATUSES.map(s => (
+                    <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
             <div className={styles.field}>
               <label className={styles.fieldLabel} htmlFor="new-task-desc">Description (optional)</label>
               <textarea id="new-task-desc" name="description" rows={3} className={styles.textarea} />

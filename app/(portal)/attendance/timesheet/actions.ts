@@ -44,8 +44,6 @@ const CreateProjectSchema = z.object({
   name: z.string().min(1).max(120),
   code: z.string().max(20).optional(),
   description: z.string().max(500).optional(),
-  // Comma-separated initial task names.
-  tasks: z.string().max(500).optional(),
 });
 
 const SetStatusSchema = z.object({
@@ -64,6 +62,13 @@ const AddTaskSchema = z.object({
   taskName: z.string().min(1).max(120),
   description: z.string().max(500).optional(),
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('')),
+  status: z.enum(PROJECT_STATUSES).optional(),
+});
+
+// Same shape as AddTaskSchema, plus the project it belongs to — for the
+// global "New task" entry point on the projects list page.
+const CreateTaskSchema = AddTaskSchema.extend({
+  projectId: z.string().min(1),
 });
 
 const UpdateTaskSchema = z.object({
@@ -148,13 +153,12 @@ export async function createProjectAction(formData: FormData): Promise<void> {
     name: input.name,
     code: input.code,
     description: input.description,
-    tasks: input.tasks ? input.tasks.split(',') : [],
   });
   await auditLog({
     actorId: user.id,
     action: 'project.create',
     target: project.id,
-    details: { name: project.name, tasks: project.tasks.map(t => t.name) },
+    details: { name: project.name },
   });
   await setNoticeFlash('Project created');
   revalidatePath('/attendance/timesheet/projects');
@@ -168,12 +172,36 @@ export async function addProjectTaskAction(projectId: string, formData: FormData
   const task = await addProjectTask(projectId, input.taskName, {
     description: input.description,
     dueDate: input.dueDate ? input.dueDate : null,
+    status: input.status,
   });
   await auditLog({ actorId: user.id, action: 'project.add_task', target: projectId, details: { taskId: task.id, name: task.name } });
   await setNoticeFlash('Task added');
   revalidatePath('/attendance/timesheet/projects');
   revalidatePath(`/attendance/timesheet/projects/${projectId}`);
   revalidatePath('/attendance/timesheet');
+}
+
+// Global "New task" entry point (projects list page) — picks the project via
+// a <select> instead of the project being implicit from the current route.
+export async function createProjectTaskAction(formData: FormData): Promise<void> {
+  const user = await requireSession(PERMISSIONS.MANAGE_PROJECTS);
+  const input = CreateTaskSchema.parse(Object.fromEntries(formData));
+  const task = await addProjectTask(input.projectId, input.taskName, {
+    description: input.description,
+    dueDate: input.dueDate ? input.dueDate : null,
+    status: input.status,
+  });
+  await auditLog({
+    actorId: user.id,
+    action: 'project.add_task',
+    target: input.projectId,
+    details: { taskId: task.id, name: task.name },
+  });
+  await setNoticeFlash('Task added');
+  revalidatePath('/attendance/timesheet/projects');
+  revalidatePath(`/attendance/timesheet/projects/${input.projectId}`);
+  revalidatePath('/attendance/timesheet');
+  redirect('/attendance/timesheet/projects');
 }
 
 // ============= KANBAN DRAG-AND-DROP (task-level) =============

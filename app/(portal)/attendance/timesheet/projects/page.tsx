@@ -10,17 +10,19 @@ import Link from 'next/link';
 import { requireSession } from '@/lib/auth';
 import { PERMISSIONS } from '@/lib/permissions';
 import { listUsers } from '@/lib/db/users';
-import { listProjects } from '@/lib/db/projects';
+import { listProjects, PROJECT_STATUSES } from '@/lib/db/projects';
 import { sumHoursForProjectAllUsers, formatHoursHM } from '@/lib/db/timesheets';
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
+import { STATUS_LABEL } from '@/components/ui/ProjectBoard';
 import {
   createProjectAction,
   setProjectDueDateAction,
   updateProjectDescriptionAction,
   deleteProjectAction,
+  createProjectTaskAction,
 } from '../actions';
 import styles from '../timesheet.module.css';
 import listStyles from './projects.module.css';
@@ -29,12 +31,13 @@ import listStyles from './projects.module.css';
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ newProject?: string }>;
+  searchParams: Promise<{ newProject?: string; newTask?: string }>;
 }) {
   await requireSession(PERMISSIONS.MANAGE_PROJECTS);
-  const { newProject } = await searchParams;
+  const { newProject, newTask } = await searchParams;
   const closeHref = '/attendance/timesheet/projects';
   const showNewProjectModal = newProject === '1';
+  const showNewTaskModal = newTask === '1';
 
   const [allProjects, users] = await Promise.all([listProjects(), listUsers()]);
   const userIds = users.map(u => u.id);
@@ -48,6 +51,9 @@ export default async function ProjectsPage({
         <h1 className="text-3xl font-semibold">Projects</h1>
         <span className="flex items-center gap-2">
           <Link href="/attendance/timesheet"><Button variant="ghost">Back to timesheet</Button></Link>
+          {allProjects.length > 0 && (
+            <Link href={`${closeHref}?newTask=1`}><Button variant="secondary">New task</Button></Link>
+          )}
           <Link href={`${closeHref}?newProject=1`}><Button>New project</Button></Link>
         </span>
       </div>
@@ -118,10 +124,7 @@ export default async function ProjectsPage({
         <Modal title="New project" closeHref={closeHref}>
           <form action={createProjectAction} className={styles.modalForm}>
             <Input name="name" label="Project name" placeholder="e.g. Website Redesign" required />
-            <div className={styles.fieldRow}>
-              <Input name="code" label="Code (optional)" placeholder="e.g. WEB" />
-              <Input name="tasks" label="Tasks (comma-separated)" placeholder="Design, Development, QA" />
-            </div>
+            <Input name="code" label="Code (optional)" placeholder="e.g. WEB" />
             <div className={styles.field}>
               <label className={styles.fieldLabel} htmlFor="prj-desc">Description (optional)</label>
               <textarea
@@ -135,6 +138,42 @@ export default async function ProjectsPage({
             <div className={styles.modalFooter}>
               <Link href={closeHref}><Button type="button" variant="ghost">Cancel</Button></Link>
               <Button type="submit">Create project</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ============= NEW TASK MODAL (project picker) ============= */}
+      {showNewTaskModal && allProjects.length > 0 && (
+        <Modal title="New task" closeHref={closeHref}>
+          <form action={createProjectTaskAction} className={styles.modalForm}>
+            <div className={styles.field}>
+              <label className={styles.fieldLabel} htmlFor="task-project">Project</label>
+              <select id="task-project" name="projectId" required defaultValue={allProjects[0]!.id} className={styles.select}>
+                {allProjects.map(p => (
+                  <option key={p.id} value={p.id}>{p.code ? `${p.code} — ${p.name}` : p.name}</option>
+                ))}
+              </select>
+            </div>
+            <Input name="taskName" label="Task name" placeholder="e.g. QA pass" required />
+            <div className={styles.fieldRow}>
+              <Input name="dueDate" type="date" label="Due date (optional)" />
+              <div className={styles.field}>
+                <label className={styles.fieldLabel} htmlFor="task-status">Status</label>
+                <select id="task-status" name="status" defaultValue="discuss" className={styles.select}>
+                  {PROJECT_STATUSES.map(s => (
+                    <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className={styles.field}>
+              <label className={styles.fieldLabel} htmlFor="task-desc">Description (optional)</label>
+              <textarea id="task-desc" name="description" rows={2} className={styles.textarea} />
+            </div>
+            <div className={styles.modalFooter}>
+              <Link href={closeHref}><Button type="button" variant="ghost">Cancel</Button></Link>
+              <Button type="submit">Add task</Button>
             </div>
           </form>
         </Modal>

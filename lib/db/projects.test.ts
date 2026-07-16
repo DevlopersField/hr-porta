@@ -115,6 +115,13 @@ describe('addProjectTask', () => {
     expect(task.description).toBe('Do the thing');
     expect(task.dueDate).toBe('2026-08-01');
   });
+
+  it('accepts an explicit status on creation instead of defaulting to discuss', async () => {
+    const { createProject, addProjectTask } = await import('./projects');
+    const p = await createProject({ name: 'Task With Status' });
+    const task = await addProjectTask(p.id, 'Straight to QA', { status: 'qa' });
+    expect(task.status).toBe('qa');
+  });
 });
 
 describe('updateProjectTask', () => {
