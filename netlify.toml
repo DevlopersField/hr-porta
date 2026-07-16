@@ -5,7 +5,12 @@
 [build.environment]
   NODE_VERSION = "20"
   AUTH_TRUST_HOST = "true"
-  SEED_DEMO = "true"
+  # Demo org is OFF in production: its accounts share DEMO_PASSWORD, whose default
+  # ('Password123!') is public in this repo, and some carry HR-level permissions —
+  # seeding them on a public URL would hand out privileged logins. Log in with the
+  # fixed BOOTSTRAP_ADMIN instead. To enable demo data anyway, set this to "true"
+  # AND set a strong DEMO_PASSWORD in the Netlify dashboard (never the default).
+  SEED_DEMO = "false"
   BOOTSTRAP_ADMIN_EMAIL = "virajchaudhary@gmail.com"
   # BOOTSTRAP_ADMIN_PASSWORD is NOT committed — set it in the Netlify dashboard
   # (Site settings → Environment variables). Listed below so the secrets scan

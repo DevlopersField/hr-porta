@@ -16,10 +16,6 @@ import type { z } from 'zod';
 export function storageIsBlobs(): boolean {
   return process.env.STORAGE_BACKEND === 'blobs' || process.env.NETLIFY === 'true';
 }
-// Internal alias so the branches below read naturally.
-function useBlobs(): boolean {
-  return storageIsBlobs();
-}
 
 // Lazily obtain the Netlify Blobs store. Called ONLY inside blobs branches so
 // local/test runs never touch Netlify context. getStore auto-configures on a
@@ -64,7 +60,7 @@ export async function readJson<T>(
   schema: z.ZodType<T>,
   fallback?: T,
 ): Promise<T> {
-  if (useBlobs()) {
+  if (storageIsBlobs()) {
     const store = blobStore();
     const data = await store.get(relPath, { type: 'json' });
     if (data == null) {
@@ -99,7 +95,7 @@ export async function withLock<T>(
   relPath: DbPath,
   mutator: () => Promise<T>,
 ): Promise<T> {
-  if (useBlobs()) {
+  if (storageIsBlobs()) {
     // Blobs has no file-lock primitive. Single-file write safety is provided by
     // updateJson's etag CAS loop; here we just run the mutator directly.
     return await mutator();
@@ -118,7 +114,7 @@ export async function updateJson<T>(
   fallback: T,
   mutator: (current: T) => T | Promise<T>,
 ): Promise<T> {
-  if (useBlobs()) {
+  if (storageIsBlobs()) {
     // Optimistic read-modify-write with etag compare-and-set. Preserves the
     // concurrency safety withLock gave on fs, since Blobs has no lock.
     const store = blobStore();
@@ -154,7 +150,7 @@ export async function withLocks<T>(
   paths: DbPath[],
   mutator: () => Promise<T>,
 ): Promise<T> {
-  if (useBlobs()) {
+  if (storageIsBlobs()) {
     // No lock primitive on Blobs; cross-file writes are last-write-wins.
     return await mutator();
   }
@@ -178,12 +174,12 @@ export async function withLocks<T>(
 // Used for uploads (binary) and per-entry audit writes. Keys are the same
 // relative paths as the fs layout (e.g. 'uploads/<filename>').
 export async function readBinary(key: string): Promise<Buffer | null> {
-  if (useBlobs()) {
+  if (storageIsBlobs()) {
     const store = blobStore();
     const ab = await store.get(key, { type: 'arrayBuffer' });
     return ab == null ? null : Buffer.from(ab);
   }
-  const full = path.join(getDataDir(), key);
+  const full = resolve(key);
   try {
     return await fs.readFile(full);
   } catch (err) {
@@ -193,25 +189,25 @@ export async function readBinary(key: string): Promise<Buffer | null> {
 }
 
 export async function writeBinary(key: string, buf: Buffer): Promise<void> {
-  if (useBlobs()) {
+  if (storageIsBlobs()) {
     const store = blobStore();
     // Copy into a fresh Uint8Array so its backing ArrayBuffer is exactly the
     // bytes we want (no shared-buffer / offset surprises).
     await store.set(key, new Uint8Array(buf).buffer);
     return;
   }
-  const full = path.join(getDataDir(), key);
+  const full = resolve(key);
   await fs.mkdir(path.dirname(full), { recursive: true });
   await fs.writeFile(full, buf);
 }
 
 export async function deleteKey(key: string): Promise<void> {
-  if (useBlobs()) {
+  if (storageIsBlobs()) {
     const store = blobStore();
     await store.delete(key);
     return;
   }
-  const full = path.join(getDataDir(), key);
+  const full = resolve(key);
   try {
     await fs.rm(full);
   } catch (err) {
@@ -223,11 +219,11 @@ export async function deleteKey(key: string): Promise<void> {
 // Write a JSON value at an arbitrary key (append-only style writes, e.g. audit
 // entries). Blobs → setJSON; fs → atomic write at the key path.
 export async function writeJson(key: string, value: unknown): Promise<void> {
-  if (useBlobs()) {
+  if (storageIsBlobs()) {
     const store = blobStore();
     await store.setJSON(key, value);
     return;
   }
-  const full = path.join(getDataDir(), key);
+  const full = resolve(key);
   await atomicWrite(full, JSON.stringify(value, null, 2));
 }
