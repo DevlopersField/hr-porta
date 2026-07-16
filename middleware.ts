@@ -16,10 +16,10 @@ export default auth((req) => {
 
   if (isPublicAsset) return;
   if (!isLoggedIn && !isLoginPage) {
-    return Response.redirect(new URL('/login', req.url));
+    return Response.redirect(new URL('/login', req.nextUrl));
   }
   if (isLoggedIn && isLoginPage) {
-    return Response.redirect(new URL('/home', req.url));
+    return Response.redirect(new URL('/home', req.nextUrl));
   }
 });
 
