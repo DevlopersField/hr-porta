@@ -1,7 +1,18 @@
 # CLAUDE.md — HR Portal handoff for future Claude sessions
 
-> **Last updated:** 2026-07-03 · all 7 previously-deferred modules now shipped
+> **Last updated:** 2026-07-16 · timesheet modals + enterprise grid polish
 > Read this first. It's a load-bearing summary so you can continue work without re-discovering everything.
+
+> **2026-07-16:** Timesheet add/edit/new-project now run in URL-driven modals
+> (`?add=<date>` / `?edit=<id>` / `?newProject=1`) via the new `components/ui/Modal.tsx`
+> primitive (client shell: Escape/backdrop/X → `closeHref`; content stays server-rendered).
+> Grid restyled via `timesheet.module.css` (uppercase headers, today highlight, weekend
+> muting, hover `+` affordances, tabular nums, segmented week nav + stat chips). Timesheet
+> actions now `redirect()` back to `?week=` after submit so modals close. Hours input has
+> client-side `pattern` validation. **Production deploys need `AUTH_TRUST_HOST=true`**
+> (NextAuth v5 UntrustedHost — now in `.env.example`). Full Playwright QA pass (50 checks:
+> admin/employee/manager flows, permissions, leave round-trip, dark + mobile). Test count **224**.
+> Spec: `docs/superpowers/specs/2026-07-16-timesheet-modal-enterprise-design.md`.
 
 > **2026-07-15:** Attachment security hardening (public/private upload split, scoped
 > request-attachment access, nosniff, upload-first ordering) + full project timesheet
@@ -74,7 +85,7 @@ A proper fix is to run `pnpm approve-builds` once and commit the result. Hasn't 
 | Settings | `/settings/{appearance,branding,layout,locale}` | `data/settings.json`, live theme customisation, image uploads |
 | Leave | `/leave/{balance,request,approvals}` | `data/leaves/{userId}.json`, 4 types, status pills, self-approval blocked |
 | Attendance | `/attendance/clock` | `data/attendance/{userId}.json`, single open day, Open/Closed status pills |
-| Timesheet | `/attendance/timesheet` | `data/timesheets/{userId}.json` + `data/projects.json`; weekly Mon–Sun grid (project/task rows × day columns, day/row/week totals), week-by-week nav, H:MM entry (`5:30`) against project + task (projects contain tasks; taskId null = "Other"), edit/delete any entry, month-by-project summary, team week view (`VIEW_TEAM_ATTENDANCE` = direct reports, `VIEW_ALL_ATTENDANCE` = everyone), 24h/day cap, + icons on grid cells prefill the log form (`?add=<date>&pt=<projectId\|taskId>`), filled cells anchor to that day's edit card, `MANAGE_PROJECTS` admins create projects with description + comma-separated initial tasks |
+| Timesheet | `/attendance/timesheet` | `data/timesheets/{userId}.json` + `data/projects.json`; weekly Mon–Sun grid (project/task rows × day columns, day/row/week totals), week-by-week nav, H:MM entry (`5:30`) against project + task (projects contain tasks; taskId null = "Other"), edit/delete any entry, month-by-project summary, team week view (`VIEW_TEAM_ATTENDANCE` = direct reports, `VIEW_ALL_ATTENDANCE` = everyone), 24h/day cap. Add/edit/new-project open **modals** driven by URL params (`?add=<date>&pt=<projectId\|taskId>`, `?edit=<id>`, `?newProject=1`); grid `+` icons open the prefilled add modal; filled cells anchor to that day's edit card; actions redirect back to `?week=` to close the modal; `MANAGE_PROJECTS` admins create projects with description + comma-separated initial tasks |
 | Email | (infra, optional) | `lib/email.ts`; nodemailer over any free SMTP (env `SMTP_HOST/PORT/USER/PASS/FROM`, see `.env.example`); invite + password-reset mails with temp password; logged no-op when unconfigured — zero external cost |
 | Attachments | (embedded in 4 modules) | `data/attachments.json` registry + `data/uploads/file-*`; access policy in `lib/db/attachment-access.ts`, download via auth-gated `/api/files/[id]` only |
 | Document Center | `/document-center`, `/document-center/[slug]` | Markdown files in `content/document-center/`, gray-matter + marked + DOMPurify |
@@ -146,6 +157,9 @@ components/
 │   ├── Button.tsx              Pill-shaped, 4 variants, 3 sizes
 │   ├── Input.tsx               forwardRef'd, with label + error
 │   ├── GlassPanel.tsx          Legacy name; renders as .card-panel
+│   ├── Modal.tsx               URL-driven dialog: server decides render via search
+│   │                           params; client shell handles Escape/backdrop/X →
+│   │                           router.push(closeHref) + body scroll lock
 │   ├── StatCard.tsx            Default + featured (filled forest-green) variants
 │   └── StatusPill.tsx          green / amber / red tones
 ├── layout/
@@ -237,9 +251,13 @@ In rough priority order:
 
 7. **`auditLog` POSIX-append atomicity claim** is OS-fragile (only safe on Linux ext4/xfs under PIPE_BUF). Audit entries with rich details can exceed 4KB and interleave on concurrent writes.
 
+8. **Server-action validation errors show Next's generic error page.** Zod/parse failures in actions (e.g. malformed hours that bypass the client `pattern`, duplicate project name) throw and render "A server error occurred" instead of an inline message. Data stays safe; UX only. A form-level error pattern (useActionState) is the proper fix.
+
+9. **QA gotcha (for anyone writing Playwright tests):** the sidebar's sign-out `<form>` button is the FIRST `button[type="submit"]` in DOM order on every portal page. Non-strict selectors like `page.click('button[type="submit"]')` click Sign out and kill the session. Always target buttons by text (`button:has-text("Create user")`).
+
 ## Test inventory
 
-`node_modules/.bin/vitest run` → **98 tests passing** across 13 files:
+`node_modules/.bin/vitest run` → **224 tests passing** (27 files; original 13 listed below, plus module tests added 2026-07-03/07-15 and `components/ui/Modal.test.tsx`):
 
 - `lib/db/core.test.ts` — 5 tests (readJson + concurrent updateJson)
 - `lib/db/users.test.ts` — 3 tests (CRUD + permissions)

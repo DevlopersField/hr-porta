@@ -100,7 +100,15 @@ function EntryFields({
       </div>
       <div className={styles.fieldRow}>
         <Input name="date" type="date" label="Date" defaultValue={defaults.date} required />
-        <Input name="hours" label="Hours (H:MM)" defaultValue={defaults.hours} placeholder="5:30" required />
+        <Input
+          name="hours"
+          label="Hours (H:MM)"
+          defaultValue={defaults.hours}
+          placeholder="5:30"
+          required
+          pattern="\d{1,2}(:[0-5]\d)?|\d{1,2}\.\d+"
+          title="H:MM (e.g. 5:30) or decimal hours (e.g. 7.5)"
+        />
       </div>
       <Input name="note" label="Note (optional)" defaultValue={defaults.note} placeholder="What did you work on?" />
     </>
