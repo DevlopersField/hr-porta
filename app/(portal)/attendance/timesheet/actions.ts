@@ -20,6 +20,8 @@ const AddEntrySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   hours: z.string().min(1).max(10),
   note: z.string().max(300).optional(),
+  // Week the user was viewing — actions redirect back to it to close the modal.
+  week: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 const CreateProjectSchema = z.object({
@@ -28,7 +30,12 @@ const CreateProjectSchema = z.object({
   description: z.string().max(500).optional(),
   // Comma-separated initial task names.
   tasks: z.string().max(500).optional(),
+  week: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
+
+function timesheetHref(week?: string): string {
+  return week ? `/attendance/timesheet?week=${week}` : '/attendance/timesheet';
+}
 
 const AddTaskSchema = z.object({
   taskName: z.string().min(1).max(120),
@@ -61,6 +68,7 @@ export async function addTimesheetEntryAction(formData: FormData): Promise<void>
   });
   await setNoticeFlash('Time logged');
   revalidatePath('/attendance/timesheet');
+  redirect(timesheetHref(input.week));
 }
 
 // ============= EDIT ENTRY =============
@@ -84,7 +92,7 @@ export async function updateTimesheetEntryAction(entryId: string, formData: Form
   });
   await setNoticeFlash('Entry updated');
   revalidatePath('/attendance/timesheet');
-  redirect('/attendance/timesheet');
+  redirect(timesheetHref(input.week));
 }
 
 // ============= DELETE OWN ENTRY =============
@@ -114,6 +122,7 @@ export async function createProjectAction(formData: FormData): Promise<void> {
   });
   await setNoticeFlash('Project created');
   revalidatePath('/attendance/timesheet');
+  redirect(timesheetHref(input.week));
 }
 
 export async function addProjectTaskAction(projectId: string, formData: FormData): Promise<void> {

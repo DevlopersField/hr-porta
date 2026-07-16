@@ -1,0 +1,139 @@
+/* app/(portal)/attendance/timesheet/timesheet.module.css */
+
+/* ============= WEEK NAV ============= */
+.weekNav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 2px;
+}
+.weekNavBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  font-size: 14px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.weekNavBtn:hover { background: var(--color-surface); color: var(--color-text); }
+.weekNavLabel {
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.statChips { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.statChip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+}
+.statChipLabel {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+}
+.statChipValue { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ============= WEEKLY GRID ============= */
+.grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.grid th {
+  padding: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  text-align: center;
+  white-space: nowrap;
+}
+.grid th.rowHead { text-align: left; }
+.grid td {
+  padding: 10px 12px;
+  font-size: 13px;
+  text-align: center;
+  border-top: 1px solid var(--color-border);
+}
+.grid tbody tr:hover td { background: var(--color-card-hover); }
+.rowHead { text-align: left !important; font-weight: 500; }
+.dateSub { display: block; font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; margin-top: 2px; }
+.today { background: color-mix(in srgb, var(--color-primary) 6%, transparent); }
+.todayHead {
+  color: var(--color-primary) !important;
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface)) !important;
+}
+.weekend { color: var(--color-text-muted); }
+
+.cellHours { font-weight: 600; text-underline-offset: 2px; }
+.cellHours:hover { text-decoration: underline; }
+.addCell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  opacity: 0.35;
+  font-size: 15px;
+  line-height: 1;
+  transition: opacity 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+.grid tbody tr:hover .addCell { opacity: 1; }
+.addCell:hover { background: var(--color-surface); color: var(--color-primary); opacity: 1; }
+
+.totalsRow td {
+  border-top: 2px solid var(--color-border);
+  background: var(--color-surface);
+  font-weight: 600;
+}
+.totalCol { font-weight: 600; }
+.emptyCell { color: var(--color-text-muted); }
+.mutedRowLabel { color: var(--color-text-muted); font-size: 12px; font-weight: 400; }
+
+.gridScroll { overflow-x: auto; }
+
+/* ============= MODAL FORMS ============= */
+.modalForm { display: flex; flex-direction: column; gap: 16px; }
+.fieldRow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.fieldLabel { font-size: 13px; font-weight: 500; color: var(--color-text); }
+.select,
+.textarea {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--color-text);
+  outline: none;
+  transition: border-color 120ms, box-shadow 120ms;
+}
+.select:focus, .textarea:focus { border-color: var(--color-primary); }
+.textarea { resize: vertical; }
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}

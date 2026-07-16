@@ -1,8 +1,9 @@
 // app/(portal)/attendance/timesheet/page.tsx
 // Weekly project timesheet: a Mon–Sun grid of project/task rows with per-day
-// hours, week-by-week navigation, H:MM manual entry against a selected
-// project + task, edit/delete on any entry, month summary, and a team view
-// for managers. Clock in/out (presence) stays at /attendance/clock.
+// hours, week-by-week navigation, H:MM entry against a selected project +
+// task, edit/delete on any entry, month summary, and a team view for
+// managers. Add/edit/new-project run in URL-driven modals (?add / ?edit /
+// ?newProject). Clock in/out (presence) stays at /attendance/clock.
 
 // ============= IMPORTS =============
 import Link from 'next/link';
@@ -21,6 +22,7 @@ import {
 import { GlassPanel } from '@/components/ui/GlassPanel';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 import { StatusPill } from '@/components/ui/StatusPill';
 import {
   addTimesheetEntryAction,
@@ -30,6 +32,7 @@ import {
   addProjectTaskAction,
   setProjectActiveAction,
 } from './actions';
+import styles from './timesheet.module.css';
 
 // ============= DATE HELPERS =============
 function mondayOf(date: string): string {
@@ -58,15 +61,6 @@ function dayLabel(date: string): string {
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-// ============= STYLES =============
-const selectStyle = {
-  padding: '10px 14px', borderRadius: 'var(--radius-md)',
-  border: '1px solid var(--color-border)', background: 'var(--color-surface-strong)',
-  fontSize: '14px', minWidth: '220px',
-} as React.CSSProperties;
-const cellStyle = { padding: '10px 12px', fontSize: '13px', textAlign: 'center' } as React.CSSProperties;
-const rowHeadStyle = { padding: '10px 12px', fontSize: '13px', textAlign: 'left' } as React.CSSProperties;
-
 // ============= SHARED SELECT =============
 // One grouped select drives both add and edit: value is "projectId|taskId"
 // ('' task = the project's Other bucket).
@@ -76,14 +70,7 @@ function ProjectTaskSelect({
   projects: Project[]; id: string; defaultValue?: string;
 }) {
   return (
-    <select
-      id={id}
-      name="projectTask"
-      required
-      defaultValue={defaultValue}
-      // eslint-disable-next-line react/forbid-dom-props
-      style={selectStyle}
-    >
+    <select id={id} name="projectTask" required defaultValue={defaultValue} className={styles.select}>
       {projects.map(p => (
         <optgroup key={p.id} label={p.code ? `${p.code} — ${p.name}` : p.name}>
           {p.tasks.map(t => (
@@ -96,7 +83,31 @@ function ProjectTaskSelect({
   );
 }
 
-// ============= ENTRY ROWS =============
+// ============= ENTRY FORM (shared by add + edit modals) =============
+function EntryFields({
+  activeProjects, weekStart, defaults,
+}: {
+  activeProjects: Project[];
+  weekStart: string;
+  defaults: { projectTask?: string; date: string; hours?: string; note?: string };
+}) {
+  return (
+    <>
+      <input type="hidden" name="week" value={weekStart} />
+      <div className={styles.field}>
+        <label className={styles.fieldLabel} htmlFor="entry-pt">Project / task</label>
+        <ProjectTaskSelect projects={activeProjects} id="entry-pt" defaultValue={defaults.projectTask} />
+      </div>
+      <div className={styles.fieldRow}>
+        <Input name="date" type="date" label="Date" defaultValue={defaults.date} required />
+        <Input name="hours" label="Hours (H:MM)" defaultValue={defaults.hours} placeholder="5:30" required />
+      </div>
+      <Input name="note" label="Note (optional)" defaultValue={defaults.note} placeholder="What did you work on?" />
+    </>
+  );
+}
+
+// ============= ENTRY ROW =============
 function entryLabel(projectById: Map<string, Project>, e: TimesheetEntry): string {
   const p = projectById.get(e.projectId);
   if (!p) return 'Unknown project';
@@ -126,39 +137,14 @@ function EntryRow({
   );
 }
 
-function EntryEditRow({
-  entry, activeProjects, cancelHref,
-}: {
-  entry: TimesheetEntry; activeProjects: Project[]; cancelHref: string;
-}) {
-  const save = updateTimesheetEntryAction.bind(null, entry.id);
-  return (
-    <form action={save} className="flex flex-wrap items-end gap-3 py-2">
-      <div className="flex flex-col gap-2">
-        <label className="text-sm font-medium" htmlFor={`edit-pt-${entry.id}`}>Project / task</label>
-        <ProjectTaskSelect
-          projects={activeProjects}
-          id={`edit-pt-${entry.id}`}
-          defaultValue={`${entry.projectId}|${entry.taskId ?? ''}`}
-        />
-      </div>
-      <Input name="date" type="date" label="Date" defaultValue={entry.date} required />
-      <Input name="hours" label="Hours (H:MM)" defaultValue={formatHoursHM(entry.hours)} placeholder="5:30" required />
-      <Input name="note" label="Note" defaultValue={entry.note} />
-      <Button type="submit" size="sm">Save</Button>
-      <Link href={cancelHref}><Button variant="ghost" size="sm">Cancel</Button></Link>
-    </form>
-  );
-}
-
 // ============= PAGE =============
 export default async function TimesheetPage({
   searchParams,
 }: {
-  searchParams: Promise<{ week?: string; edit?: string; add?: string; pt?: string }>;
+  searchParams: Promise<{ week?: string; edit?: string; add?: string; pt?: string; newProject?: string }>;
 }) {
   const user = await requireSession();
-  const { week: weekParam, edit: editId, add: addDate, pt: addProjectTask } = await searchParams;
+  const { week: weekParam, edit: editId, add: addDate, pt: addProjectTask, newProject } = await searchParams;
   const today = new Date().toISOString().slice(0, 10);
   const prefillDate = /^\d{4}-\d{2}-\d{2}$/.test(addDate ?? '') ? addDate! : today;
   const weekStart = /^\d{4}-\d{2}-\d{2}$/.test(weekParam ?? '') ? mondayOf(weekParam!) : mondayOf(today);
@@ -177,6 +163,13 @@ export default async function TimesheetPage({
   const activeProjects = allProjects.filter(p => p.active);
   const projectById = new Map(allProjects.map(p => [p.id, p]));
   const canManageProjects = hasPermission(user, PERMISSIONS.MANAGE_PROJECTS);
+
+  // ============= MODAL STATE (from URL) =============
+  const weekHref = (start: string, extra = '') => `/attendance/timesheet?week=${start}${extra}`;
+  const closeHref = weekHref(weekStart);
+  const showAddModal = Boolean(addDate);
+  const editEntry = editId ? weekEntries.find(e => e.id === editId) : undefined;
+  const showNewProjectModal = canManageProjects && newProject === '1';
 
   // ============= WEEKLY GRID (project/task rows × Mon–Sun) =============
   // rowKey = projectId|taskId; cells sum hours per date.
@@ -197,6 +190,8 @@ export default async function TimesheetPage({
   const sortedRows = [...gridRows.entries()].sort((a, b) => rowLabel(a[0]).localeCompare(rowLabel(b[0])));
   const dayTotals = weekDates.map(d => weekEntries.filter(e => e.date === d).reduce((s, e) => s + e.hours, 0));
   const weekTotal = dayTotals.reduce((s, h) => s + h, 0);
+  const dayClass = (d: string, i: number) =>
+    [d === today ? styles.today : '', i >= 5 ? styles.weekend : ''].join(' ').trim();
 
   // Day-grouped entry list under the grid (edit/delete lives here).
   const dayGroups = new Map<string, TimesheetEntry[]>();
@@ -223,154 +218,125 @@ export default async function TimesheetPage({
     }),
   )).filter(r => r.total > 0);
 
-  const weekHref = (start: string, extra = '') => `/attendance/timesheet?week=${start}${extra}`;
-
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="text-3xl font-semibold">Timesheet</h1>
-        <Link href="/attendance/clock"><Button variant="ghost">Clock in / out</Button></Link>
+        <span className="flex items-center gap-2">
+          <Link href="/attendance/clock"><Button variant="ghost">Clock in / out</Button></Link>
+          <Link href={weekHref(weekStart, `&add=${today}`)}><Button>Log time</Button></Link>
+        </span>
       </div>
 
-      {/* ============= WEEK NAV ============= */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <Link href={weekHref(addDays(weekStart, -7))}>
-          <Button variant="ghost" size="sm">← Previous week</Button>
-        </Link>
-        <span className="text-lg font-semibold">{shortDate(weekStart)} – {shortDate(weekEnd)}, {weekStart.slice(0, 4)}</span>
-        <Link href={weekHref(addDays(weekStart, 7))}>
-          <Button variant="ghost" size="sm">Next week →</Button>
-        </Link>
+      {/* ============= WEEK NAV + SUMMARY ============= */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <nav className={styles.weekNav} aria-label="Week navigation">
+          <Link href={weekHref(addDays(weekStart, -7))} className={styles.weekNavBtn} aria-label="Previous week">‹</Link>
+          <span className={styles.weekNavLabel}>{shortDate(weekStart)} – {shortDate(weekEnd)}, {weekStart.slice(0, 4)}</span>
+          <Link href={weekHref(addDays(weekStart, 7))} className={styles.weekNavBtn} aria-label="Next week">›</Link>
+        </nav>
         {weekStart !== mondayOf(today) && (
           <Link href={weekHref(mondayOf(today))}>
             <Button variant="ghost" size="sm">This week</Button>
           </Link>
         )}
-        <span className="ml-auto text-sm text-text-muted">
-          Week: <strong>{formatHoursHM(weekTotal)}</strong> · {monthLabel}: {formatHoursHM(monthTotal)} · Clocked: {Math.floor(totalClockedMin / 60)}:{String(totalClockedMin % 60).padStart(2, '0')}
-        </span>
+        <div className={styles.statChips}>
+          <span className={styles.statChip}>
+            <span className={styles.statChipLabel}>Week</span>
+            <span className={styles.statChipValue}>{formatHoursHM(weekTotal)}</span>
+          </span>
+          <span className={styles.statChip}>
+            <span className={styles.statChipLabel}>{monthLabel.split(' ')[0]}</span>
+            <span className={styles.statChipValue}>{formatHoursHM(monthTotal)}</span>
+          </span>
+          <span className={styles.statChip}>
+            <span className={styles.statChipLabel}>Clocked</span>
+            <span className={styles.statChipValue}>{Math.floor(totalClockedMin / 60)}:{String(totalClockedMin % 60).padStart(2, '0')}</span>
+          </span>
+        </div>
       </div>
-
-      {/* ============= LOG TIME ============= */}
-      {/* Prefilled by the grid's + links via ?add=<date>&pt=<projectId|taskId>. */}
-      <GlassPanel id="log-time">
-        <h2 className="text-lg font-semibold mb-4">Log time</h2>
-        {activeProjects.length === 0 ? (
-          <p className="text-sm text-text-muted">
-            No active projects yet{canManageProjects ? ' — add one below.' : '. Ask an administrator to add projects.'}
-          </p>
-        ) : (
-          <form action={addTimesheetEntryAction} className="flex flex-wrap items-end gap-3">
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium" htmlFor="ts-pt">Project / task</label>
-              <ProjectTaskSelect projects={activeProjects} id="ts-pt" defaultValue={addProjectTask} />
-            </div>
-            <Input name="date" type="date" label="Date" defaultValue={prefillDate} required />
-            <Input name="hours" label="Hours (H:MM)" placeholder="5:30" required />
-            <Input name="note" label="Note (optional)" placeholder="What did you work on?" />
-            <Button type="submit">Add entry</Button>
-          </form>
-        )}
-      </GlassPanel>
 
       {/* ============= WEEKLY GRID ============= */}
       <GlassPanel className="p-0 overflow-hidden">
-        {/* eslint-disable-next-line react/forbid-dom-props */}
-        <table style={{ width: '100%', borderCollapse: 'collapse' } as React.CSSProperties}>
-          <thead>
-            {/* eslint-disable-next-line react/forbid-dom-props */}
-            <tr style={{ background: 'var(--color-surface)' } as React.CSSProperties}>
-              {/* eslint-disable-next-line react/forbid-dom-props */}
-              <th style={{ ...rowHeadStyle, fontWeight: 500 } as React.CSSProperties}>Project / task</th>
-              {weekDates.map((d, i) => (
-                // eslint-disable-next-line react/forbid-dom-props
-                <th key={d} style={{ ...cellStyle, fontWeight: d === today ? 700 : 500 } as React.CSSProperties}>
-                  {WEEKDAYS[i]}<br /><span className="text-xs text-text-muted">{shortDate(d)}</span>
-                </th>
-              ))}
-              {/* eslint-disable-next-line react/forbid-dom-props */}
-              <th style={{ ...cellStyle, fontWeight: 600 } as React.CSSProperties}>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedRows.length === 0 && (
+        <div className={styles.gridScroll}>
+          <table className={styles.grid}>
+            <thead>
               <tr>
-                {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '13px' } as React.CSSProperties}>
-                  No time logged this week.
-                </td>
+                <th className={styles.rowHead}>Project / task</th>
+                {weekDates.map((d, i) => (
+                  <th key={d} className={d === today ? styles.todayHead : (i >= 5 ? styles.weekend : undefined)}>
+                    {WEEKDAYS[i]}
+                    <span className={styles.dateSub}>{shortDate(d)}</span>
+                  </th>
+                ))}
+                <th>Total</th>
               </tr>
-            )}
-            {sortedRows.map(([key, cells]) => {
-              const rowTotal = [...cells.values()].reduce((s, h) => s + h, 0);
-              return (
-                // eslint-disable-next-line react/forbid-dom-props
-                <tr key={key} style={{ borderTop: '1px solid var(--color-border)' } as React.CSSProperties}>
-                  {/* eslint-disable-next-line react/forbid-dom-props */}
-                  <td style={rowHeadStyle}>{rowLabel(key)}</td>
-                  {weekDates.map(d => (
-                    // eslint-disable-next-line react/forbid-dom-props
-                    <td key={d} style={cellStyle}>
-                      {cells.has(d) ? (
-                        // Filled cell: jump to that day's entries below for edit/delete.
-                        <a href={`#day-${d}`} className="font-medium underline-offset-2 hover:underline">
-                          {formatHoursHM(cells.get(d)!)}
-                        </a>
-                      ) : (
-                        // Empty cell: + prefills the form with this date AND this row's project/task.
-                        <Link
-                          href={`${weekHref(weekStart, `&add=${d}&pt=${encodeURIComponent(key)}`)}#log-time`}
-                          className="text-text-muted hover:text-text"
-                          aria-label={`Log time for ${rowLabel(key)} on ${d}`}
-                        >
-                          +
-                        </Link>
-                      )}
+            </thead>
+            <tbody>
+              {sortedRows.length === 0 && (
+                <tr>
+                  <td colSpan={9} className={styles.emptyCell}>No time logged this week.</td>
+                </tr>
+              )}
+              {sortedRows.map(([key, cells]) => {
+                const rowTotal = [...cells.values()].reduce((s, h) => s + h, 0);
+                return (
+                  <tr key={key}>
+                    <td className={styles.rowHead}>{rowLabel(key)}</td>
+                    {weekDates.map((d, i) => (
+                      <td key={d} className={dayClass(d, i)}>
+                        {cells.has(d) ? (
+                          // Filled cell: jump to that day's entries below for edit/delete.
+                          <a href={`#day-${d}`} className={styles.cellHours}>
+                            {formatHoursHM(cells.get(d)!)}
+                          </a>
+                        ) : (
+                          // Empty cell: + opens the log modal prefilled with this date AND row's project/task.
+                          <Link
+                            href={weekHref(weekStart, `&add=${d}&pt=${encodeURIComponent(key)}`)}
+                            className={styles.addCell}
+                            aria-label={`Log time for ${rowLabel(key)} on ${d}`}
+                          >
+                            +
+                          </Link>
+                        )}
+                      </td>
+                    ))}
+                    <td className={styles.totalCol}>{formatHoursHM(rowTotal)}</td>
+                  </tr>
+                );
+              })}
+              {activeProjects.length > 0 && (
+                <tr>
+                  <td className={`${styles.rowHead} ${styles.mutedRowLabel}`}>Add entry</td>
+                  {weekDates.map((d, i) => (
+                    <td key={d} className={dayClass(d, i)}>
+                      <Link
+                        href={weekHref(weekStart, `&add=${d}`)}
+                        className={styles.addCell}
+                        aria-label={`Log time on ${d}`}
+                      >
+                        +
+                      </Link>
                     </td>
                   ))}
-                  {/* eslint-disable-next-line react/forbid-dom-props */}
-                  <td style={{ ...cellStyle, fontWeight: 600 } as React.CSSProperties}>{formatHoursHM(rowTotal)}</td>
+                  <td></td>
                 </tr>
-              );
-            })}
-            {activeProjects.length > 0 && (
-              // eslint-disable-next-line react/forbid-dom-props
-              <tr style={{ borderTop: '1px solid var(--color-border)' } as React.CSSProperties}>
-                {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ ...rowHeadStyle, color: 'var(--color-text-muted)', fontSize: '12px' } as React.CSSProperties}>Add entry</td>
-                {weekDates.map(d => (
-                  // eslint-disable-next-line react/forbid-dom-props
-                  <td key={d} style={cellStyle}>
-                    <Link
-                      href={`${weekHref(weekStart, `&add=${d}`)}#log-time`}
-                      className="text-text-muted hover:text-text text-base"
-                      aria-label={`Log time on ${d}`}
-                    >
-                      +
-                    </Link>
-                  </td>
-                ))}
-                {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={cellStyle}></td>
-              </tr>
-            )}
-            {sortedRows.length > 0 && (
-              // eslint-disable-next-line react/forbid-dom-props
-              <tr style={{ borderTop: '2px solid var(--color-border)', background: 'var(--color-surface)' } as React.CSSProperties}>
-                {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ ...rowHeadStyle, fontWeight: 600 } as React.CSSProperties}>Day total</td>
-                {dayTotals.map((h, i) => (
-                  // eslint-disable-next-line react/forbid-dom-props
-                  <td key={weekDates[i]} style={{ ...cellStyle, fontWeight: 600 } as React.CSSProperties}>
-                    {h > 0 ? formatHoursHM(h) : <span className="text-text-muted">—</span>}
-                  </td>
-                ))}
-                {/* eslint-disable-next-line react/forbid-dom-props */}
-                <td style={{ ...cellStyle, fontWeight: 700 } as React.CSSProperties}>{formatHoursHM(weekTotal)}</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+              {sortedRows.length > 0 && (
+                <tr className={styles.totalsRow}>
+                  <td className={styles.rowHead}>Day total</td>
+                  {dayTotals.map((h, i) => (
+                    <td key={weekDates[i]}>
+                      {h > 0 ? formatHoursHM(h) : <span className={styles.emptyCell}>—</span>}
+                    </td>
+                  ))}
+                  <td>{formatHoursHM(weekTotal)}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </GlassPanel>
 
       {/* ============= ENTRIES (edit/delete) ============= */}
@@ -383,13 +349,9 @@ export default async function TimesheetPage({
             </span>
           </div>
           <div className="flex flex-col divide-y divide-border">
-            {dayEntries.map(e =>
-              e.id === editId ? (
-                <EntryEditRow key={e.id} entry={e} activeProjects={activeProjects} cancelHref={weekHref(weekStart)} />
-              ) : (
-                <EntryRow key={e.id} entry={e} projectById={projectById} editHref={weekHref(weekStart, `&edit=${e.id}`)} />
-              ),
-            )}
+            {dayEntries.map(e => (
+              <EntryRow key={e.id} entry={e} projectById={projectById} editHref={weekHref(weekStart, `&edit=${e.id}`)} />
+            ))}
           </div>
         </GlassPanel>
       ))}
@@ -441,28 +403,12 @@ export default async function TimesheetPage({
       {/* ============= PROJECT & TASK MANAGEMENT (admins) ============= */}
       {canManageProjects && (
         <GlassPanel>
-          <h2 className="text-lg font-semibold mb-4">Projects</h2>
-          <form action={createProjectAction} className="flex flex-col gap-3 mb-6">
-            <div className="flex flex-wrap items-end gap-3">
-              <Input name="name" label="Project name" placeholder="e.g. Website Redesign" required />
-              <Input name="code" label="Code (optional)" placeholder="e.g. WEB" />
-              <Input name="tasks" label="Tasks (comma-separated)" placeholder="Design, Development, QA" />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-sm font-medium" htmlFor="prj-desc">Description (optional)</label>
-              <textarea
-                id="prj-desc"
-                name="description"
-                rows={2}
-                placeholder="What is this project about?"
-                // eslint-disable-next-line react/forbid-dom-props
-                style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)', background: 'var(--color-surface-strong)', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' } as React.CSSProperties}
-              />
-            </div>
-            <div>
-              <Button type="submit">Add project</Button>
-            </div>
-          </form>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Projects</h2>
+            <Link href={weekHref(weekStart, '&newProject=1')}>
+              <Button variant="secondary" size="sm">New project</Button>
+            </Link>
+          </div>
           <ul className="flex flex-col gap-4">
             {allProjects.map(p => {
               const toggle = async () => { 'use server'; await setProjectActiveAction(p.id, !p.active); };
@@ -495,6 +441,79 @@ export default async function TimesheetPage({
             {allProjects.length === 0 && <li className="text-sm text-text-muted">No projects yet.</li>}
           </ul>
         </GlassPanel>
+      )}
+
+      {/* ============= LOG TIME MODAL ============= */}
+      {showAddModal && (
+        <Modal title="Log time" closeHref={closeHref}>
+          {activeProjects.length === 0 ? (
+            <p className="text-sm text-text-muted">
+              No active projects yet{canManageProjects ? ' — create one from the Projects panel.' : '. Ask an administrator to add projects.'}
+            </p>
+          ) : (
+            <form action={addTimesheetEntryAction} className={styles.modalForm}>
+              <EntryFields
+                activeProjects={activeProjects}
+                weekStart={weekStart}
+                defaults={{ projectTask: addProjectTask, date: prefillDate }}
+              />
+              <div className={styles.modalFooter}>
+                <Link href={closeHref}><Button type="button" variant="ghost">Cancel</Button></Link>
+                <Button type="submit">Add entry</Button>
+              </div>
+            </form>
+          )}
+        </Modal>
+      )}
+
+      {/* ============= EDIT ENTRY MODAL ============= */}
+      {editEntry && (
+        <Modal title="Edit entry" closeHref={closeHref}>
+          <form action={updateTimesheetEntryAction.bind(null, editEntry.id)} className={styles.modalForm}>
+            <EntryFields
+              activeProjects={activeProjects}
+              weekStart={weekStart}
+              defaults={{
+                projectTask: `${editEntry.projectId}|${editEntry.taskId ?? ''}`,
+                date: editEntry.date,
+                hours: formatHoursHM(editEntry.hours),
+                note: editEntry.note,
+              }}
+            />
+            <div className={styles.modalFooter}>
+              <Link href={closeHref}><Button type="button" variant="ghost">Cancel</Button></Link>
+              <Button type="submit">Save changes</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* ============= NEW PROJECT MODAL ============= */}
+      {showNewProjectModal && (
+        <Modal title="New project" closeHref={closeHref}>
+          <form action={createProjectAction} className={styles.modalForm}>
+            <input type="hidden" name="week" value={weekStart} />
+            <Input name="name" label="Project name" placeholder="e.g. Website Redesign" required />
+            <div className={styles.fieldRow}>
+              <Input name="code" label="Code (optional)" placeholder="e.g. WEB" />
+              <Input name="tasks" label="Tasks (comma-separated)" placeholder="Design, Development, QA" />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.fieldLabel} htmlFor="prj-desc">Description (optional)</label>
+              <textarea
+                id="prj-desc"
+                name="description"
+                rows={2}
+                placeholder="What is this project about?"
+                className={styles.textarea}
+              />
+            </div>
+            <div className={styles.modalFooter}>
+              <Link href={closeHref}><Button type="button" variant="ghost">Cancel</Button></Link>
+              <Button type="submit">Create project</Button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   );
